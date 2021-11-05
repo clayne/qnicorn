@@ -1029,6 +1029,7 @@ if (NOT MSVC AND NOT ANDROID_ABI)
 endif()
 
 if (QNICORN_BUILD_SHARED)
+
     add_library(qnicorn SHARED
         ${QNICORN_SRCS}
     )
@@ -1211,7 +1212,7 @@ if(NOT MSVC)
     )
     install(FILES ${QNICORN_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/qnicorn)
     file(WRITE ${CMAKE_BINARY_DIR}/qnicorn.pc "Name: qnicorn\n\
-Description: Unicorn emulator engine\n\
+Description: Qnicorn emulator engine\n\
 Version: ${QNICORN_VERSION_MAJOR}.${QNICORN_VERSION_MINOR}.${QNICORN_VERSION_PATCH}\n\
 libdir=${CMAKE_INSTALL_FULL_LIBDIR}\n\
 includedir=${CMAKE_INSTALL_FULL_INCLUDEDIR}\n\

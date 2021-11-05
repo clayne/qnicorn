@@ -27,7 +27,7 @@
 #include "qemu/include/qemu/queue.h"
 #include "qemu-common.h"
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 unsigned int qc_version(unsigned int *major, unsigned int *minor)
 {
     if (major != NULL && minor != NULL) {
@@ -38,13 +38,13 @@ unsigned int qc_version(unsigned int *major, unsigned int *minor)
     return (QC_API_MAJOR << 8) + QC_API_MINOR;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_errno(qc_engine *uc)
 {
     return uc->errnum;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 const char *qc_strerror(qc_err code)
 {
     switch (code) {
@@ -95,7 +95,7 @@ const char *qc_strerror(qc_err code)
     }
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 bool qc_arch_supported(qc_arch arch)
 {
     switch (arch) {
@@ -184,7 +184,7 @@ static qc_err qc_init(qc_engine *uc)
     return QC_ERR_OK;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **result)
 {
     struct qc_struct *uc;
@@ -358,7 +358,7 @@ qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **result)
     }
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_close(qc_engine *uc)
 {
     int i;
@@ -450,7 +450,7 @@ qc_err qc_close(qc_engine *uc)
     return QC_ERR_OK;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_reg_read_batch(qc_engine *uc, int *ids, void **vals, int count)
 {
     int ret = QC_ERR_OK;
@@ -466,7 +466,7 @@ qc_err qc_reg_read_batch(qc_engine *uc, int *ids, void **vals, int count)
     return ret;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_reg_write_batch(qc_engine *uc, int *ids, void *const *vals, int count)
 {
     int ret = QC_ERR_OK;
@@ -482,14 +482,14 @@ qc_err qc_reg_write_batch(qc_engine *uc, int *ids, void *const *vals, int count)
     return ret;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_reg_read(qc_engine *uc, int regid, void *value)
 {
     QC_INIT(uc);
     return qc_reg_read_batch(uc, &regid, &value, 1);
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_reg_write(qc_engine *uc, int regid, const void *value)
 {
     QC_INIT(uc);
@@ -516,7 +516,7 @@ static bool check_mem_area(qc_engine *uc, uint64_t address, size_t size)
     return (count == size);
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_read(qc_engine *uc, uint64_t address, void *_bytes, size_t size)
 {
     size_t count = 0, len;
@@ -560,7 +560,7 @@ qc_err qc_mem_read(qc_engine *uc, uint64_t address, void *_bytes, size_t size)
     }
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_write(qc_engine *uc, uint64_t address, const void *_bytes,
                     size_t size)
 {
@@ -686,7 +686,7 @@ static void clear_deleted_hooks(qc_engine *uc)
     list_clear(&uc->hooks_to_del);
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_emu_start(qc_engine *uc, uint64_t begin, uint64_t until,
                     uint64_t timeout, size_t count)
 {
@@ -817,7 +817,7 @@ qc_err qc_emu_start(qc_engine *uc, uint64_t begin, uint64_t until,
     return uc->invalid_error;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_emu_stop(qc_engine *uc)
 {
     QC_INIT(uc);
@@ -958,7 +958,7 @@ static qc_err mem_map_check(qc_engine *uc, uint64_t address, size_t size,
     return QC_ERR_OK;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_map(qc_engine *uc, uint64_t address, size_t size, uint32_t perms)
 {
     qc_err res;
@@ -978,7 +978,7 @@ qc_err qc_mem_map(qc_engine *uc, uint64_t address, size_t size, uint32_t perms)
                    uc->memory_map(uc, address, size, perms));
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_map_ptr(qc_engine *uc, uint64_t address, size_t size,
                       uint32_t perms, void *ptr)
 {
@@ -1003,7 +1003,7 @@ qc_err qc_mem_map_ptr(qc_engine *uc, uint64_t address, size_t size,
                    uc->memory_map_ptr(uc, address, size, perms, ptr));
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mmio_map(qc_engine *uc, uint64_t address, size_t size,
                    qc_cb_mmio_read_t read_cb, void *user_data_read,
                    qc_cb_mmio_write_t write_cb, void *user_data_write)
@@ -1209,7 +1209,7 @@ error:
     return false;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_protect(struct qc_struct *uc, uint64_t address, size_t size,
                       uint32_t perms)
 {
@@ -1283,7 +1283,7 @@ qc_err qc_mem_protect(struct qc_struct *uc, uint64_t address, size_t size,
     return QC_ERR_OK;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_unmap(struct qc_struct *uc, uint64_t address, size_t size)
 {
     MemoryRegion *mr;
@@ -1371,7 +1371,7 @@ MemoryRegion *memory_mapping(struct qc_struct *uc, uint64_t address)
     return NULL;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
                    void *user_data, uint64_t begin, uint64_t end, ...)
 {
@@ -1490,7 +1490,7 @@ qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
     return ret;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_hook_del(qc_engine *uc, qc_hook hh)
 {
     int i;
@@ -1607,7 +1607,7 @@ void helper_qc_tracecode(int32_t size, qc_hook_idx index, void *handle,
     }
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_regions(qc_engine *uc, qc_mem_region **regions, uint32_t *count)
 {
     uint32_t i;
@@ -1636,7 +1636,7 @@ qc_err qc_mem_regions(qc_engine *uc, qc_mem_region **regions, uint32_t *count)
     return QC_ERR_OK;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_query(qc_engine *uc, qc_query_type type, size_t *result)
 {
     QC_INIT(uc);
@@ -1670,7 +1670,7 @@ qc_err qc_query(qc_engine *uc, qc_query_type type, size_t *result)
     return QC_ERR_OK;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_alloc(qc_engine *uc, qc_context **context)
 {
     struct qc_context **_context = context;
@@ -1695,14 +1695,14 @@ qc_err qc_context_alloc(qc_engine *uc, qc_context **context)
     }
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_free(void *mem)
 {
     g_free(mem);
     return QC_ERR_OK;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 size_t qc_context_size(qc_engine *uc)
 {
     QC_INIT(uc);
@@ -1711,7 +1711,7 @@ size_t qc_context_size(qc_engine *uc)
            sizeof(*uc->cpu->jmp_env);
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_save(qc_engine *uc, qc_context *context)
 {
     QC_INIT(uc);
@@ -1723,13 +1723,13 @@ qc_err qc_context_save(qc_engine *uc, qc_context *context)
     return QC_ERR_OK;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_reg_write(qc_context *ctx, int regid, const void *value)
 {
     return qc_context_reg_write_batch(ctx, &regid, (void *const *)&value, 1);
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_reg_read(qc_context *ctx, int regid, void *value)
 {
     return qc_context_reg_read_batch(ctx, &regid, &value, 1);
@@ -1850,7 +1850,7 @@ static void find_context_reg_rw_function(qc_arch arch, qc_mode mode,
     return;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_reg_write_batch(qc_context *ctx, int *ids, void *const *vals,
                                   int count)
 {
@@ -1867,7 +1867,7 @@ qc_err qc_context_reg_write_batch(qc_context *ctx, int *ids, void *const *vals,
     return ret;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_reg_read_batch(qc_context *ctx, int *ids, void **vals,
                                  int count)
 {
@@ -1884,7 +1884,7 @@ qc_err qc_context_reg_read_batch(qc_context *ctx, int *ids, void **vals,
     return ret;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_restore(qc_engine *uc, qc_context *context)
 {
     QC_INIT(uc);
@@ -1898,7 +1898,7 @@ qc_err qc_context_restore(qc_engine *uc, qc_context *context)
     return QC_ERR_OK;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_free(qc_context *context)
 {
     qc_engine *uc = context->uc;
@@ -1924,7 +1924,7 @@ static inline gboolean qc_read_exit_iter(gpointer key, gpointer val,
     return false;
 }
 
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
 {
     int rw, type;

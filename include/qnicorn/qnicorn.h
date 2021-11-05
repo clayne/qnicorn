@@ -44,16 +44,16 @@ typedef size_t qc_hook;
 #ifdef _MSC_VER
 #pragma warning(disable : 4201)
 #pragma warning(disable : 4100)
-#ifdef UNICORN_SHARED
-#define UNICORN_EXPORT __declspec(dllexport)
+#ifdef QNICORN_SHARED
+#define QNICORN_EXPORT __declspec(dllexport)
 #else // defined(UNICORN_STATIC)
-#define UNICORN_EXPORT
+#define QNICORN_EXPORT
 #endif
 #else
 #ifdef __GNUC__
-#define UNICORN_EXPORT __attribute__((visibility("default")))
+#define QNICORN_EXPORT __attribute__((visibility("default")))
 #else
-#define UNICORN_EXPORT
+#define QNICORN_EXPORT
 #endif
 #endif
 
@@ -574,7 +574,7 @@ typedef struct qc_context qc_context;
  NOTE: if you only care about returned value, but not major and minor values,
  set both @major & @minor arguments to NULL.
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 unsigned int qc_version(unsigned int *major, unsigned int *minor);
 
 /*
@@ -584,7 +584,7 @@ unsigned int qc_version(unsigned int *major, unsigned int *minor);
 
  @return True if this library supports the given arch.
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 bool qc_arch_supported(qc_arch arch);
 
 /*
@@ -597,7 +597,7 @@ bool qc_arch_supported(qc_arch arch);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **uc);
 
 /*
@@ -613,7 +613,7 @@ qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **uc);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_close(qc_engine *uc);
 
 /*
@@ -626,7 +626,7 @@ qc_err qc_close(qc_engine *uc);
 
  @return: error code of qc_err enum type (QC_ERR_*, see above)
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_query(qc_engine *uc, qc_query_type type, size_t *result);
 
 /*
@@ -640,7 +640,7 @@ qc_err qc_query(qc_engine *uc, qc_query_type type, size_t *result);
 
  @return: error code of qc_err enum type (QC_ERR_*, see above)
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...);
 
 /*
@@ -651,7 +651,7 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...);
 
  @return: error code of qc_err enum type (QC_ERR_*, see above)
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_errno(qc_engine *uc);
 
 /*
@@ -662,7 +662,7 @@ qc_err qc_errno(qc_engine *uc);
  @return: returns a pointer to a string that describes the error code
    passed in the argument @code
  */
-UNICORN_EXPORT
+QNICORN_EXPORT
 const char *qc_strerror(qc_err code);
 
 /*
@@ -675,7 +675,7 @@ const char *qc_strerror(qc_err code);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_reg_write(qc_engine *uc, int regid, const void *value);
 
 /*
@@ -688,7 +688,7 @@ qc_err qc_reg_write(qc_engine *uc, int regid, const void *value);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_reg_read(qc_engine *uc, int regid, void *value);
 
 /*
@@ -702,7 +702,7 @@ qc_err qc_reg_read(qc_engine *uc, int regid, void *value);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_reg_write_batch(qc_engine *uc, int *regs, void *const *vals,
                           int count);
 
@@ -717,7 +717,7 @@ qc_err qc_reg_write_batch(qc_engine *uc, int *regs, void *const *vals,
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_reg_read_batch(qc_engine *uc, int *regs, void **vals, int count);
 
 /*
@@ -733,7 +733,7 @@ qc_err qc_reg_read_batch(qc_engine *uc, int *regs, void **vals, int count);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_write(qc_engine *uc, uint64_t address, const void *bytes,
                     size_t size);
 
@@ -750,7 +750,7 @@ qc_err qc_mem_write(qc_engine *uc, uint64_t address, const void *bytes,
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_read(qc_engine *uc, uint64_t address, void *bytes, size_t size);
 
 /*
@@ -771,7 +771,7 @@ qc_err qc_mem_read(qc_engine *uc, uint64_t address, void *bytes, size_t size);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_emu_start(qc_engine *uc, uint64_t begin, uint64_t until,
                     uint64_t timeout, size_t count);
 
@@ -784,7 +784,7 @@ qc_err qc_emu_start(qc_engine *uc, uint64_t begin, uint64_t until,
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_emu_stop(qc_engine *uc);
 
 /*
@@ -812,7 +812,7 @@ qc_err qc_emu_stop(qc_engine *uc);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
                    void *user_data, uint64_t begin, uint64_t end, ...);
 
@@ -828,7 +828,7 @@ qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_hook_del(qc_engine *uc, qc_hook hh);
 
 typedef enum qc_prot {
@@ -857,7 +857,7 @@ typedef enum qc_prot {
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_map(qc_engine *uc, uint64_t address, size_t size, uint32_t perms);
 
 /*
@@ -882,7 +882,7 @@ qc_err qc_mem_map(qc_engine *uc, uint64_t address, size_t size, uint32_t perms);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_map_ptr(qc_engine *uc, uint64_t address, size_t size,
                       uint32_t perms, void *ptr);
 
@@ -905,7 +905,7 @@ qc_err qc_mem_map_ptr(qc_engine *uc, uint64_t address, size_t size,
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
  */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mmio_map(qc_engine *uc, uint64_t address, size_t size,
                    qc_cb_mmio_read_t read_cb, void *user_data_read,
                    qc_cb_mmio_write_t write_cb, void *user_data_write);
@@ -925,7 +925,7 @@ qc_err qc_mmio_map(qc_engine *uc, uint64_t address, size_t size,
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_unmap(qc_engine *uc, uint64_t address, size_t size);
 
 /*
@@ -946,7 +946,7 @@ qc_err qc_mem_unmap(qc_engine *uc, uint64_t address, size_t size);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_protect(qc_engine *uc, uint64_t address, size_t size,
                       uint32_t perms);
 
@@ -964,7 +964,7 @@ qc_err qc_mem_protect(qc_engine *uc, uint64_t address, size_t size,
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_mem_regions(qc_engine *uc, qc_mem_region **regions, uint32_t *count);
 
 /*
@@ -981,7 +981,7 @@ qc_err qc_mem_regions(qc_engine *uc, qc_mem_region **regions, uint32_t *count);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_alloc(qc_engine *uc, qc_context **context);
 
 /*
@@ -995,7 +995,7 @@ qc_err qc_context_alloc(qc_engine *uc, qc_context **context);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_free(void *mem);
 
 /*
@@ -1009,7 +1009,7 @@ qc_err qc_free(void *mem);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_save(qc_engine *uc, qc_context *context);
 
 /*
@@ -1022,7 +1022,7 @@ qc_err qc_context_save(qc_engine *uc, qc_context *context);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_reg_write(qc_context *ctx, int regid, const void *value);
 
 /*
@@ -1035,7 +1035,7 @@ qc_err qc_context_reg_write(qc_context *ctx, int regid, const void *value);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_reg_read(qc_context *ctx, int regid, void *value);
 
 /*
@@ -1049,7 +1049,7 @@ qc_err qc_context_reg_read(qc_context *ctx, int regid, void *value);
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_reg_write_batch(qc_context *ctx, int *regs, void *const *vals,
                                   int count);
 
@@ -1064,7 +1064,7 @@ qc_err qc_context_reg_write_batch(qc_context *ctx, int *regs, void *const *vals,
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_reg_read_batch(qc_context *ctx, int *regs, void **vals,
                                  int count);
 
@@ -1080,7 +1080,7 @@ qc_err qc_context_reg_read_batch(qc_context *ctx, int *regs, void **vals,
  @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_restore(qc_engine *uc, qc_context *context);
 
 /*
@@ -1091,7 +1091,7 @@ qc_err qc_context_restore(qc_engine *uc, qc_context *context);
 
   @return the size for needed to store the cpu context as as size_t.
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 size_t qc_context_size(qc_engine *uc);
 
 /*
@@ -1102,7 +1102,7 @@ size_t qc_context_size(qc_engine *uc);
   @return QC_ERR_OK on success, or other value on failure (refer to qc_err enum
    for detailed error).
 */
-UNICORN_EXPORT
+QNICORN_EXPORT
 qc_err qc_context_free(qc_context *context);
 
 #ifdef __cplusplus
