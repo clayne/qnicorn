@@ -192,7 +192,7 @@ typedef enum qc_err {
   unknown
   @user_data: user data passed to tracing APIs.
 */
-typedef void (*qc_cb_hookcode_t)(qc_engine *uc, uint64_t address, uint32_t size,
+typedef void (*qc_cb_hookcode_t)(qc_engine *qc, uint64_t address, uint32_t size,
                                  void *user_data);
 
 /*
@@ -201,7 +201,7 @@ typedef void (*qc_cb_hookcode_t)(qc_engine *uc, uint64_t address, uint32_t size,
   @intno: interrupt number
   @user_data: user data passed to tracing APIs.
 */
-typedef void (*qc_cb_hookintr_t)(qc_engine *uc, uint32_t intno,
+typedef void (*qc_cb_hookintr_t)(qc_engine *qc, uint32_t intno,
                                  void *user_data);
 
 /*
@@ -212,7 +212,7 @@ typedef void (*qc_cb_hookintr_t)(qc_engine *uc, uint32_t intno,
   @return: return true to continue, or false to stop program (due to invalid
   instruction).
 */
-typedef bool (*qc_cb_hookinsn_invalid_t)(qc_engine *uc, void *user_data);
+typedef bool (*qc_cb_hookinsn_invalid_t)(qc_engine *qc, void *user_data);
 
 /*
   Callback function for tracing IN instruction of X86
@@ -221,7 +221,7 @@ typedef bool (*qc_cb_hookinsn_invalid_t)(qc_engine *uc, void *user_data);
   @size: data size (1/2/4) to be read from this port
   @user_data: user data passed to tracing APIs.
 */
-typedef uint32_t (*qc_cb_insn_in_t)(qc_engine *uc, uint32_t port, int size,
+typedef uint32_t (*qc_cb_insn_in_t)(qc_engine *qc, uint32_t port, int size,
                                     void *user_data);
 
 /*
@@ -231,7 +231,7 @@ typedef uint32_t (*qc_cb_insn_in_t)(qc_engine *uc, uint32_t port, int size,
   @size: data size (1/2/4) to be written to this port
   @value: data value to be written to this port
 */
-typedef void (*qc_cb_insn_out_t)(qc_engine *uc, uint32_t port, int size,
+typedef void (*qc_cb_insn_out_t)(qc_engine *qc, uint32_t port, int size,
                                  uint32_t value, void *user_data);
 
 // Represent a TranslationBlock.
@@ -247,7 +247,7 @@ typedef struct qc_tb {
   @cur_tb: Current TB which is to be generated.
   @prev_tb: The previous TB.
 */
-typedef void (*qc_hook_edge_gen_t)(qc_engine *uc, qc_tb *cur_tb, qc_tb *prev_tb,
+typedef void (*qc_hook_edge_gen_t)(qc_engine *qc, qc_tb *cur_tb, qc_tb *prev_tb,
                                    void *user_data);
 
 /*
@@ -257,7 +257,7 @@ typedef void (*qc_hook_edge_gen_t)(qc_engine *uc, qc_tb *cur_tb, qc_tb *prev_tb,
   @arg1: The first argument.
   @arg2: The second argument.
 */
-typedef void (*qc_hook_tcg_op_2)(qc_engine *uc, uint64_t address, uint64_t arg1,
+typedef void (*qc_hook_tcg_op_2)(qc_engine *qc, uint64_t address, uint64_t arg1,
                                  uint64_t arg2, void *user_data);
 
 typedef qc_hook_tcg_op_2 qc_hook_tcg_sub;
@@ -269,7 +269,7 @@ typedef qc_hook_tcg_op_2 qc_hook_tcg_sub;
   @size: data size to read
   @user_data: user data passed to qc_mmio_map()
 */
-typedef uint64_t (*qc_cb_mmio_read_t)(qc_engine *uc, uint64_t offset,
+typedef uint64_t (*qc_cb_mmio_read_t)(qc_engine *qc, uint64_t offset,
                                       unsigned size, void *user_data);
 
 /*
@@ -280,7 +280,7 @@ typedef uint64_t (*qc_cb_mmio_read_t)(qc_engine *uc, uint64_t offset,
   @value: data value to be written
   @user_data: user data passed to qc_mmio_map()
 */
-typedef void (*qc_cb_mmio_write_t)(qc_engine *uc, uint64_t offset,
+typedef void (*qc_cb_mmio_write_t)(qc_engine *qc, uint64_t offset,
                                    unsigned size, uint64_t value,
                                    void *user_data);
 
@@ -395,7 +395,7 @@ typedef enum qc_hook_type {
   @value: value of data being written to memory, or irrelevant if type = READ.
   @user_data: user data passed to tracing APIs
 */
-typedef void (*qc_cb_hookmem_t)(qc_engine *uc, qc_mem_type type,
+typedef void (*qc_cb_hookmem_t)(qc_engine *qc, qc_mem_type type,
                                 uint64_t address, int size, int64_t value,
                                 void *user_data);
 
@@ -424,7 +424,7 @@ typedef void (*qc_cb_hookmem_t)(qc_engine *uc, qc_mem_type type,
   address. The instruction pointer may be written to in order to change where
   execution resumes, but the fetch must succeed if execution is to resume.
 */
-typedef bool (*qc_cb_eventmem_t)(qc_engine *uc, qc_mem_type type,
+typedef bool (*qc_cb_eventmem_t)(qc_engine *qc, qc_mem_type type,
                                  uint64_t address, int size, int64_t value,
                                  void *user_data);
 
@@ -526,32 +526,32 @@ typedef enum qc_control_type {
 
 } qc_control_type;
 
-#define qc_ctl_get_mode(uc, mode)                                              \
-    qc_ctl(uc, QC_CTL_READ(QC_CTL_QC_MODE, 1), (mode))
-#define qc_ctl_get_page_size(uc, ptr)                                          \
-    qc_ctl(uc, QC_CTL_READ(QC_CTL_QC_PAGE_SIZE, 1), (ptr))
-#define qc_ctl_set_page_size(uc, page_size)                                    \
-    qc_ctl(uc, QC_CTL_WRITE(QC_CTL_QC_PAGE_SIZE, 1), (page_size))
-#define qc_ctl_get_arch(uc, arch)                                              \
-    qc_ctl(uc, QC_CTL_READ(QC_CTL_QC_ARCH, 1), (arch))
-#define qc_ctl_get_timeout(uc, ptr)                                            \
-    qc_ctl(uc, QC_CTL_READ(QC_CTL_QC_TIMEOUT, 1), (ptr))
-#define qc_ctl_exits_enabled(uc, enabled)                                      \
-    qc_ctl(uc, QC_CTL_WRITE(QC_CTL_QC_USE_EXITS, 1), (enabled))
-#define qc_ctl_get_exits_cnt(uc, ptr)                                          \
-    qc_ctl(uc, QC_CTL_READ(QC_CTL_QC_EXITS_CNT, 1), (ptr))
-#define qc_ctl_get_exits(uc, buffer, len)                                      \
-    qc_ctl(uc, QC_CTL_READ(QC_CTL_QC_EXITS, 2), (buffer), (len))
-#define qc_ctl_set_exits(uc, buffer, len)                                      \
-    qc_ctl(uc, QC_CTL_WRITE(QC_CTL_QC_EXITS, 2), (buffer), (len))
-#define qc_ctl_get_cpu_model(uc, model)                                        \
-    qc_ctl(uc, QC_CTL_READ(QC_CTL_CPU_MODEL, 1), (model))
-#define qc_ctl_set_cpu_model(uc, model)                                        \
-    qc_ctl(uc, QC_CTL_WRITE(QC_CTL_CPU_MODEL, 1), (model))
-#define qc_ctl_remove_cache(uc, address)                                       \
-    qc_ctl(uc, QC_CTL_WRITE(QC_CTL_TB_REMOVE_CACHE, 1), (address))
-#define qc_ctl_request_cache(uc, address, tb)                                  \
-    qc_ctl(uc, QC_CTL_READ_WRITE(QC_CTL_TB_REQUEST_CACHE, 2), (address), (tb))
+#define qc_ctl_get_mode(qc, mode)                                              \
+    qc_ctl(qc, QC_CTL_READ(QC_CTL_QC_MODE, 1), (mode))
+#define qc_ctl_get_page_size(qc, ptr)                                          \
+    qc_ctl(qc, QC_CTL_READ(QC_CTL_QC_PAGE_SIZE, 1), (ptr))
+#define qc_ctl_set_page_size(qc, page_size)                                    \
+    qc_ctl(qc, QC_CTL_WRITE(QC_CTL_QC_PAGE_SIZE, 1), (page_size))
+#define qc_ctl_get_arch(qc, arch)                                              \
+    qc_ctl(qc, QC_CTL_READ(QC_CTL_QC_ARCH, 1), (arch))
+#define qc_ctl_get_timeout(qc, ptr)                                            \
+    qc_ctl(qc, QC_CTL_READ(QC_CTL_QC_TIMEOUT, 1), (ptr))
+#define qc_ctl_exits_enabled(qc, enabled)                                      \
+    qc_ctl(qc, QC_CTL_WRITE(QC_CTL_QC_USE_EXITS, 1), (enabled))
+#define qc_ctl_get_exits_cnt(qc, ptr)                                          \
+    qc_ctl(qc, QC_CTL_READ(QC_CTL_QC_EXITS_CNT, 1), (ptr))
+#define qc_ctl_get_exits(qc, buffer, len)                                      \
+    qc_ctl(qc, QC_CTL_READ(QC_CTL_QC_EXITS, 2), (buffer), (len))
+#define qc_ctl_set_exits(qc, buffer, len)                                      \
+    qc_ctl(qc, QC_CTL_WRITE(QC_CTL_QC_EXITS, 2), (buffer), (len))
+#define qc_ctl_get_cpu_model(qc, model)                                        \
+    qc_ctl(qc, QC_CTL_READ(QC_CTL_CPU_MODEL, 1), (model))
+#define qc_ctl_set_cpu_model(qc, model)                                        \
+    qc_ctl(qc, QC_CTL_WRITE(QC_CTL_CPU_MODEL, 1), (model))
+#define qc_ctl_remove_cache(qc, address)                                       \
+    qc_ctl(qc, QC_CTL_WRITE(QC_CTL_TB_REMOVE_CACHE, 1), (address))
+#define qc_ctl_request_cache(qc, address, tb)                                  \
+    qc_ctl(qc, QC_CTL_READ_WRITE(QC_CTL_TB_REQUEST_CACHE, 2), (address), (tb))
 
 // Opaque storage for CPU context, used with qc_context_*()
 struct qc_context;
@@ -598,7 +598,7 @@ bool qc_arch_supported(qc_arch arch);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **uc);
+qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **qc);
 
 /*
  Close a Unicorn engine instance.
@@ -614,7 +614,7 @@ qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **uc);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_close(qc_engine *uc);
+qc_err qc_close(qc_engine *qc);
 
 /*
  Query internal status of engine.
@@ -627,7 +627,7 @@ qc_err qc_close(qc_engine *uc);
  @return: error code of qc_err enum type (QC_ERR_*, see above)
 */
 QNICORN_EXPORT
-qc_err qc_query(qc_engine *uc, qc_query_type type, size_t *result);
+qc_err qc_query(qc_engine *qc, qc_query_type type, size_t *result);
 
 /*
  Control internal states of engine.
@@ -641,7 +641,7 @@ qc_err qc_query(qc_engine *uc, qc_query_type type, size_t *result);
  @return: error code of qc_err enum type (QC_ERR_*, see above)
 */
 QNICORN_EXPORT
-qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...);
+qc_err qc_ctl(qc_engine *qc, qc_control_type control, ...);
 
 /*
  Report the last error number when some API function fails.
@@ -652,7 +652,7 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...);
  @return: error code of qc_err enum type (QC_ERR_*, see above)
 */
 QNICORN_EXPORT
-qc_err qc_errno(qc_engine *uc);
+qc_err qc_errno(qc_engine *qc);
 
 /*
  Return a string describing given error code.
@@ -676,7 +676,7 @@ const char *qc_strerror(qc_err code);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_reg_write(qc_engine *uc, int regid, const void *value);
+qc_err qc_reg_write(qc_engine *qc, int regid, const void *value);
 
 /*
  Read register value.
@@ -689,7 +689,7 @@ qc_err qc_reg_write(qc_engine *uc, int regid, const void *value);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_reg_read(qc_engine *uc, int regid, void *value);
+qc_err qc_reg_read(qc_engine *qc, int regid, void *value);
 
 /*
  Write multiple register values.
@@ -703,7 +703,7 @@ qc_err qc_reg_read(qc_engine *uc, int regid, void *value);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_reg_write_batch(qc_engine *uc, int *regs, void *const *vals,
+qc_err qc_reg_write_batch(qc_engine *qc, int *regs, void *const *vals,
                           int count);
 
 /*
@@ -718,7 +718,7 @@ qc_err qc_reg_write_batch(qc_engine *uc, int *regs, void *const *vals,
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_reg_read_batch(qc_engine *uc, int *regs, void **vals, int count);
+qc_err qc_reg_read_batch(qc_engine *qc, int *regs, void **vals, int count);
 
 /*
  Write to a range of bytes in memory.
@@ -734,7 +734,7 @@ qc_err qc_reg_read_batch(qc_engine *uc, int *regs, void **vals, int count);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_mem_write(qc_engine *uc, uint64_t address, const void *bytes,
+qc_err qc_mem_write(qc_engine *qc, uint64_t address, const void *bytes,
                     size_t size);
 
 /*
@@ -751,7 +751,7 @@ qc_err qc_mem_write(qc_engine *uc, uint64_t address, const void *bytes,
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_mem_read(qc_engine *uc, uint64_t address, void *bytes, size_t size);
+qc_err qc_mem_read(qc_engine *qc, uint64_t address, void *bytes, size_t size);
 
 /*
  Emulate machine code in a specific duration of time.
@@ -772,7 +772,7 @@ qc_err qc_mem_read(qc_engine *uc, uint64_t address, void *bytes, size_t size);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_emu_start(qc_engine *uc, uint64_t begin, uint64_t until,
+qc_err qc_emu_start(qc_engine *qc, uint64_t begin, uint64_t until,
                     uint64_t timeout, size_t count);
 
 /*
@@ -785,7 +785,7 @@ qc_err qc_emu_start(qc_engine *uc, uint64_t begin, uint64_t until,
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_emu_stop(qc_engine *uc);
+qc_err qc_emu_stop(qc_engine *qc);
 
 /*
  Register callback for a hook event.
@@ -813,7 +813,7 @@ qc_err qc_emu_stop(qc_engine *uc);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
+qc_err qc_hook_add(qc_engine *qc, qc_hook *hh, int type, void *callback,
                    void *user_data, uint64_t begin, uint64_t end, ...);
 
 /*
@@ -829,7 +829,7 @@ qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_hook_del(qc_engine *uc, qc_hook hh);
+qc_err qc_hook_del(qc_engine *qc, qc_hook hh);
 
 typedef enum qc_prot {
     QC_PROT_NONE = 0,
@@ -858,7 +858,7 @@ typedef enum qc_prot {
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_mem_map(qc_engine *uc, uint64_t address, size_t size, uint32_t perms);
+qc_err qc_mem_map(qc_engine *qc, uint64_t address, size_t size, uint32_t perms);
 
 /*
  Map existing host memory in for emulation.
@@ -883,7 +883,7 @@ qc_err qc_mem_map(qc_engine *uc, uint64_t address, size_t size, uint32_t perms);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_mem_map_ptr(qc_engine *uc, uint64_t address, size_t size,
+qc_err qc_mem_map_ptr(qc_engine *qc, uint64_t address, size_t size,
                       uint32_t perms, void *ptr);
 
 /*
@@ -906,7 +906,7 @@ qc_err qc_mem_map_ptr(qc_engine *uc, uint64_t address, size_t size,
    for detailed error).
  */
 QNICORN_EXPORT
-qc_err qc_mmio_map(qc_engine *uc, uint64_t address, size_t size,
+qc_err qc_mmio_map(qc_engine *qc, uint64_t address, size_t size,
                    qc_cb_mmio_read_t read_cb, void *user_data_read,
                    qc_cb_mmio_write_t write_cb, void *user_data_write);
 
@@ -926,7 +926,7 @@ qc_err qc_mmio_map(qc_engine *uc, uint64_t address, size_t size,
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_mem_unmap(qc_engine *uc, uint64_t address, size_t size);
+qc_err qc_mem_unmap(qc_engine *qc, uint64_t address, size_t size);
 
 /*
  Set memory permissions for emulation memory.
@@ -947,7 +947,7 @@ qc_err qc_mem_unmap(qc_engine *uc, uint64_t address, size_t size);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_mem_protect(qc_engine *uc, uint64_t address, size_t size,
+qc_err qc_mem_protect(qc_engine *qc, uint64_t address, size_t size,
                       uint32_t perms);
 
 /*
@@ -965,7 +965,7 @@ qc_err qc_mem_protect(qc_engine *uc, uint64_t address, size_t size,
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_mem_regions(qc_engine *uc, qc_mem_region **regions, uint32_t *count);
+qc_err qc_mem_regions(qc_engine *qc, qc_mem_region **regions, uint32_t *count);
 
 /*
  Allocate a region that can be used with qc_context_{save,restore} to perform
@@ -982,7 +982,7 @@ qc_err qc_mem_regions(qc_engine *uc, qc_mem_region **regions, uint32_t *count);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_context_alloc(qc_engine *uc, qc_context **context);
+qc_err qc_context_alloc(qc_engine *qc, qc_context **context);
 
 /*
  Free the memory allocated by qc_mem_regions.
@@ -1010,7 +1010,7 @@ qc_err qc_free(void *mem);
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_context_save(qc_engine *uc, qc_context *context);
+qc_err qc_context_save(qc_engine *qc, qc_context *context);
 
 /*
  Write value to a register of a context.
@@ -1081,7 +1081,7 @@ qc_err qc_context_reg_read_batch(qc_context *ctx, int *regs, void **vals,
    for detailed error).
 */
 QNICORN_EXPORT
-qc_err qc_context_restore(qc_engine *uc, qc_context *context);
+qc_err qc_context_restore(qc_engine *qc, qc_context *context);
 
 /*
   Return the size needed to store the cpu context. Can be used to allocate a
@@ -1092,7 +1092,7 @@ qc_err qc_context_restore(qc_engine *uc, qc_context *context);
   @return the size for needed to store the cpu context as as size_t.
 */
 QNICORN_EXPORT
-size_t qc_context_size(qc_engine *uc);
+size_t qc_context_size(qc_engine *qc);
 
 /*
   Free the context allocated by qc_context_alloc().

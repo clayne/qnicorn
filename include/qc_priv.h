@@ -43,13 +43,13 @@
 
 struct TranslationBlock;
 
-typedef qc_err (*query_t)(struct qc_struct *uc, qc_query_type type,
+typedef qc_err (*query_t)(struct qc_struct *qc, qc_query_type type,
                           size_t *result);
 
 // return 0 on success, -1 on failure
-typedef int (*reg_read_t)(struct qc_struct *uc, unsigned int *regs, void **vals,
+typedef int (*reg_read_t)(struct qc_struct *qc, unsigned int *regs, void **vals,
                           int count);
-typedef int (*reg_write_t)(struct qc_struct *uc, unsigned int *regs,
+typedef int (*reg_write_t)(struct qc_struct *qc, unsigned int *regs,
                            void *const *vals, int count);
 
 typedef int (*context_reg_read_t)(struct qc_context *ctx, unsigned int *regs,
@@ -61,7 +61,7 @@ typedef struct {
     context_reg_write_t context_reg_write;
 } context_reg_rw_t;
 
-typedef void (*reg_reset_t)(struct qc_struct *uc);
+typedef void (*reg_reset_t)(struct qc_struct *qc);
 
 typedef bool (*qc_write_mem_t)(AddressSpace *as, hwaddr addr,
                                const uint8_t *buf, int len);
@@ -91,7 +91,7 @@ typedef void (*qc_readonly_mem_t)(MemoryRegion *mr, bool readonly);
 
 typedef int (*qc_cpus_init)(struct qc_struct *, const char *);
 
-typedef MemoryRegion *(*qc_memory_map_io_t)(struct qc_struct *uc,
+typedef MemoryRegion *(*qc_memory_map_io_t)(struct qc_struct *qc,
                                             ram_addr_t begin, size_t size,
                                             qc_cb_mmio_read_t read_cb,
                                             qc_cb_mmio_write_t write_cb,
@@ -99,7 +99,7 @@ typedef MemoryRegion *(*qc_memory_map_io_t)(struct qc_struct *uc,
                                             void *user_data_write);
 
 // which interrupt should make emulation stop?
-typedef bool (*qc_args_int_t)(struct qc_struct *uc, int intno);
+typedef bool (*qc_args_int_t)(struct qc_struct *qc, int intno);
 
 // some architecture redirect virtual memory to physical memory like Mips
 typedef uint64_t (*qc_mem_redirect_t)(uint64_t address);
@@ -116,14 +116,14 @@ typedef void (*qc_target_page_init)(struct qc_struct *);
 typedef void (*qc_softfloat_initialize)(void);
 
 // tcg flush softmmu tlb
-typedef void (*qc_tcg_flush_tlb)(struct qc_struct *uc);
+typedef void (*qc_tcg_flush_tlb)(struct qc_struct *qc);
 
 // Invalidate the TB at given address
-typedef void (*qc_invalidate_tb_t)(struct qc_struct *uc, uint64_t start,
+typedef void (*qc_invalidate_tb_t)(struct qc_struct *qc, uint64_t start,
                                    size_t len);
 
 // Request generating TB at given address
-typedef qc_err (*qc_gen_tb_t)(struct qc_struct *uc, uint64_t pc, qc_tb *out_tb);
+typedef qc_err (*qc_gen_tb_t)(struct qc_struct *qc, uint64_t pc, qc_tb *out_tb);
 
 struct hook {
     int type;       // QC_HOOK_*
@@ -188,8 +188,8 @@ typedef enum qc_hook_idx {
 #define HOOK_FOREACH_VAR_DECLARE struct list_item *cur
 
 // for loop macro to loop over hook lists
-#define HOOK_FOREACH(uc, hh, idx)                                              \
-    for (cur = (uc)->hook[idx##_IDX].head;                                     \
+#define HOOK_FOREACH(qc, hh, idx)                                              \
+    for (cur = (qc)->hook[idx##_IDX].head;                                     \
          cur != NULL && ((hh) = (struct hook *)cur->data); cur = cur->next)
 
 // if statement to check hook bounds
@@ -198,9 +198,9 @@ typedef enum qc_hook_idx {
       (hh)->begin > (hh)->end) &&                                              \
      !((hh)->to_delete))
 
-#define HOOK_EXISTS(uc, idx) ((uc)->hook[idx##_IDX].head != NULL)
-#define HOOK_EXISTS_BOUNDED(uc, idx, addr)                                     \
-    _hook_exists_bounded((uc)->hook[idx##_IDX].head, addr)
+#define HOOK_EXISTS(qc, idx) ((qc)->hook[idx##_IDX].head != NULL)
+#define HOOK_EXISTS_BOUNDED(qc, idx, addr)                                     \
+    _hook_exists_bounded((qc)->hook[idx##_IDX].head, addr)
 
 static inline bool _hook_exists_bounded(struct list_item *cur, uint64_t addr)
 {
@@ -351,26 +351,26 @@ struct qc_context {
     size_t jmp_env_size; // size of cpu->jmp_env
     qc_mode mode;        // the mode of this context (uc may be free-ed already)
     qc_arch arch;        // the arch of this context (uc may be free-ed already)
-    struct qc_struct *uc; // the qc_struct which creates this context
+    struct qc_struct *qc; // the qc_struct which creates this context
     char data[0];         // context + cpu->jmp_env
 };
 
 // check if this address is mapped in (via qc_mem_map())
-MemoryRegion *memory_mapping(struct qc_struct *uc, uint64_t address);
+MemoryRegion *memory_mapping(struct qc_struct *qc, uint64_t address);
 
 // We have to support 32bit system so we can't hold uint64_t on void*
-static inline void qc_add_exit(qc_engine *uc, uint64_t addr)
+static inline void qc_add_exit(qc_engine *qc, uint64_t addr)
 {
     uint64_t *new_exit = g_malloc(sizeof(uint64_t));
     *new_exit = addr;
-    g_tree_insert(uc->exits, (gpointer)new_exit, (gpointer)1);
+    g_tree_insert(qc->exits, (gpointer)new_exit, (gpointer)1);
 }
 
 // This function has to exist since we would like to accept uint32_t or
 // it's complex to achieve so.
-static inline int qc_addr_is_exit(qc_engine *uc, uint64_t addr)
+static inline int qc_addr_is_exit(qc_engine *qc, uint64_t addr)
 {
-    return g_tree_lookup(uc->exits, (gpointer)(&addr)) == (gpointer)1;
+    return g_tree_lookup(qc->exits, (gpointer)(&addr)) == (gpointer)1;
 }
 
 #endif

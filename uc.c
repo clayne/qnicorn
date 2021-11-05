@@ -39,9 +39,9 @@ unsigned int qc_version(unsigned int *major, unsigned int *minor)
 }
 
 QNICORN_EXPORT
-qc_err qc_errno(qc_engine *uc)
+qc_err qc_errno(qc_engine *qc)
 {
-    return uc->errnum;
+    return qc->errnum;
 }
 
 QNICORN_EXPORT
@@ -137,9 +137,9 @@ bool qc_arch_supported(qc_arch arch)
     }
 }
 
-#define QC_INIT(uc)                                                            \
-    if (unlikely(!(uc)->init_done)) {                                          \
-        int __init_ret = qc_init(uc);                                          \
+#define QC_INIT(qc)                                                            \
+    if (unlikely(!(qc)->init_done)) {                                          \
+        int __init_ret = qc_init(qc);                                          \
         if (unlikely(__init_ret != QC_ERR_OK)) {                               \
             return __init_ret;                                                 \
         }                                                                      \
@@ -159,27 +159,27 @@ static gint qc_exits_cmp(gconstpointer a, gconstpointer b, gpointer user_data)
     }
 }
 
-static qc_err qc_init(qc_engine *uc)
+static qc_err qc_init(qc_engine *qc)
 {
 
-    if (uc->init_done) {
+    if (qc->init_done) {
         return QC_ERR_HANDLE;
     }
 
-    uc->exits = g_tree_new_full(qc_exits_cmp, NULL, g_free, NULL);
+    qc->exits = g_tree_new_full(qc_exits_cmp, NULL, g_free, NULL);
 
-    if (machine_initialize(uc)) {
+    if (machine_initialize(qc)) {
         return QC_ERR_RESOURCE;
     }
 
     // init fpu softfloat
-    uc->softfloat_initialize();
+    qc->softfloat_initialize();
 
-    if (uc->reg_reset) {
-        uc->reg_reset(uc);
+    if (qc->reg_reset) {
+        qc->reg_reset(qc);
     }
 
-    uc->init_done = true;
+    qc->init_done = true;
 
     return QC_ERR_OK;
 }
@@ -187,27 +187,27 @@ static qc_err qc_init(qc_engine *uc)
 QNICORN_EXPORT
 qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **result)
 {
-    struct qc_struct *uc;
+    struct qc_struct *qc;
 
     if (arch < QC_ARCH_MAX) {
-        uc = calloc(1, sizeof(*uc));
-        if (!uc) {
+        qc = calloc(1, sizeof(*qc));
+        if (!qc) {
             // memory insufficient
             return QC_ERR_NOMEM;
         }
 
         /* qemu/exec.c: phys_map_node_reserve() */
-        uc->alloc_hint = 16;
-        uc->errnum = QC_ERR_OK;
-        uc->arch = arch;
-        uc->mode = mode;
+        qc->alloc_hint = 16;
+        qc->errnum = QC_ERR_OK;
+        qc->arch = arch;
+        qc->mode = mode;
 
-        // uc->ram_list = { .blocks = QLIST_HEAD_INITIALIZER(ram_list.blocks) };
-        QLIST_INIT(&uc->ram_list.blocks);
+        // qc->ram_list = { .blocks = QLIST_HEAD_INITIALIZER(ram_list.blocks) };
+        QLIST_INIT(&qc->ram_list.blocks);
 
-        QTAILQ_INIT(&uc->memory_listeners);
+        QTAILQ_INIT(&qc->memory_listeners);
 
-        QTAILQ_INIT(&uc->address_spaces);
+        QTAILQ_INIT(&qc->address_spaces);
 
         switch (arch) {
         default:
@@ -215,49 +215,49 @@ qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **result)
 #ifdef QNICORN_HAS_M68K
         case QC_ARCH_M68K:
             if ((mode & ~QC_MODE_M68K_MASK) || !(mode & QC_MODE_BIG_ENDIAN)) {
-                free(uc);
+                free(qc);
                 return QC_ERR_MODE;
             }
-            uc->init_arch = m68k_qc_init;
+            qc->init_arch = m68k_qc_init;
             break;
 #endif
 #ifdef QNICORN_HAS_X86
         case QC_ARCH_X86:
             if ((mode & ~QC_MODE_X86_MASK) || (mode & QC_MODE_BIG_ENDIAN) ||
                 !(mode & (QC_MODE_16 | QC_MODE_32 | QC_MODE_64))) {
-                free(uc);
+                free(qc);
                 return QC_ERR_MODE;
             }
-            uc->init_arch = x86_qc_init;
+            qc->init_arch = x86_qc_init;
             break;
 #endif
 #ifdef QNICORN_HAS_ARM
         case QC_ARCH_ARM:
             if ((mode & ~QC_MODE_ARM_MASK)) {
-                free(uc);
+                free(qc);
                 return QC_ERR_MODE;
             }
             if (mode & QC_MODE_BIG_ENDIAN) {
-                uc->init_arch = armeb_qc_init;
+                qc->init_arch = armeb_qc_init;
             } else {
-                uc->init_arch = arm_qc_init;
+                qc->init_arch = arm_qc_init;
             }
 
             if (mode & QC_MODE_THUMB) {
-                uc->thumb = 1;
+                qc->thumb = 1;
             }
             break;
 #endif
 #ifdef QNICORN_HAS_ARM64
         case QC_ARCH_ARM64:
             if (mode & ~QC_MODE_ARM_MASK) {
-                free(uc);
+                free(qc);
                 return QC_ERR_MODE;
             }
             if (mode & QC_MODE_BIG_ENDIAN) {
-                uc->init_arch = arm64eb_qc_init;
+                qc->init_arch = arm64eb_qc_init;
             } else {
-                uc->init_arch = arm64_qc_init;
+                qc->init_arch = arm64_qc_init;
             }
             break;
 #endif
@@ -267,29 +267,29 @@ qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **result)
         case QC_ARCH_MIPS:
             if ((mode & ~QC_MODE_MIPS_MASK) ||
                 !(mode & (QC_MODE_MIPS32 | QC_MODE_MIPS64))) {
-                free(uc);
+                free(qc);
                 return QC_ERR_MODE;
             }
             if (mode & QC_MODE_BIG_ENDIAN) {
 #ifdef QNICORN_HAS_MIPS
                 if (mode & QC_MODE_MIPS32) {
-                    uc->init_arch = mips_qc_init;
+                    qc->init_arch = mips_qc_init;
                 }
 #endif
 #ifdef QNICORN_HAS_MIPS64
                 if (mode & QC_MODE_MIPS64) {
-                    uc->init_arch = mips64_qc_init;
+                    qc->init_arch = mips64_qc_init;
                 }
 #endif
             } else { // little endian
 #ifdef QNICORN_HAS_MIPSEL
                 if (mode & QC_MODE_MIPS32) {
-                    uc->init_arch = mipsel_qc_init;
+                    qc->init_arch = mipsel_qc_init;
                 }
 #endif
 #ifdef QNICORN_HAS_MIPS64EL
                 if (mode & QC_MODE_MIPS64) {
-                    uc->init_arch = mips64el_qc_init;
+                    qc->init_arch = mips64el_qc_init;
                 }
 #endif
             }
@@ -300,13 +300,13 @@ qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **result)
         case QC_ARCH_SPARC:
             if ((mode & ~QC_MODE_SPARC_MASK) || !(mode & QC_MODE_BIG_ENDIAN) ||
                 !(mode & (QC_MODE_SPARC32 | QC_MODE_SPARC64))) {
-                free(uc);
+                free(qc);
                 return QC_ERR_MODE;
             }
             if (mode & QC_MODE_SPARC64) {
-                uc->init_arch = sparc64_qc_init;
+                qc->init_arch = sparc64_qc_init;
             } else {
-                uc->init_arch = sparc_qc_init;
+                qc->init_arch = sparc_qc_init;
             }
             break;
 #endif
@@ -314,13 +314,13 @@ qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **result)
         case QC_ARCH_PPC:
             if ((mode & ~QC_MODE_PPC_MASK) || !(mode & QC_MODE_BIG_ENDIAN) ||
                 !(mode & (QC_MODE_PPC32 | QC_MODE_PPC64))) {
-                free(uc);
+                free(qc);
                 return QC_ERR_MODE;
             }
             if (mode & QC_MODE_PPC64) {
-                uc->init_arch = ppc64_qc_init;
+                qc->init_arch = ppc64_qc_init;
             } else {
-                uc->init_arch = ppc_qc_init;
+                qc->init_arch = ppc_qc_init;
             }
             break;
 #endif
@@ -328,29 +328,29 @@ qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **result)
         case QC_ARCH_RISCV:
             if ((mode & ~QC_MODE_RISCV_MASK) ||
                 !(mode & (QC_MODE_RISCV32 | QC_MODE_RISCV64))) {
-                free(uc);
+                free(qc);
                 return QC_ERR_MODE;
             }
             if (mode & QC_MODE_RISCV32) {
-                uc->init_arch = riscv32_qc_init;
+                qc->init_arch = riscv32_qc_init;
             } else if (mode & QC_MODE_RISCV64) {
-                uc->init_arch = riscv64_qc_init;
+                qc->init_arch = riscv64_qc_init;
             } else {
-                free(uc);
+                free(qc);
                 return QC_ERR_MODE;
             }
             break;
 #endif
         }
 
-        if (uc->init_arch == NULL) {
+        if (qc->init_arch == NULL) {
             return QC_ERR_ARCH;
         }
 
-        uc->init_done = false;
-        uc->cpu_model = INT_MAX; // INT_MAX means the default cpu model.
+        qc->init_done = false;
+        qc->cpu_model = INT_MAX; // INT_MAX means the default cpu model.
 
-        *result = uc;
+        *result = qc;
 
         return QC_ERR_OK;
     } else {
@@ -359,64 +359,64 @@ qc_err qc_open(qc_arch arch, qc_mode mode, qc_engine **result)
 }
 
 QNICORN_EXPORT
-qc_err qc_close(qc_engine *uc)
+qc_err qc_close(qc_engine *qc)
 {
     int i;
     struct list_item *cur;
     struct hook *hook;
     MemoryRegion *mr;
 
-    if (!uc->init_done) {
-        free(uc);
+    if (!qc->init_done) {
+        free(qc);
         return QC_ERR_OK;
     }
 
     // Cleanup internally.
-    if (uc->release) {
-        uc->release(uc->tcg_ctx);
+    if (qc->release) {
+        qc->release(qc->tcg_ctx);
     }
-    g_free(uc->tcg_ctx);
+    g_free(qc->tcg_ctx);
 
     // Cleanup CPU.
-    g_free(uc->cpu->cpu_ases);
-    g_free(uc->cpu->thread);
+    g_free(qc->cpu->cpu_ases);
+    g_free(qc->cpu->thread);
 
     /* cpu */
-    free(uc->cpu);
+    free(qc->cpu);
 
     /* flatviews */
-    g_hash_table_destroy(uc->flat_views);
+    g_hash_table_destroy(qc->flat_views);
 
     // During flatviews destruction, we may still access memory regions.
     // So we free them afterwards.
     /* memory */
-    mr = &uc->io_mem_unassigned;
+    mr = &qc->io_mem_unassigned;
     mr->destructor(mr);
-    mr = uc->system_io;
+    mr = qc->system_io;
     mr->destructor(mr);
-    mr = uc->system_memory;
+    mr = qc->system_memory;
     mr->destructor(mr);
-    g_free(uc->system_memory);
-    g_free(uc->system_io);
+    g_free(qc->system_memory);
+    g_free(qc->system_io);
 
     // Thread relateds.
-    if (uc->qemu_thread_data) {
-        g_free(uc->qemu_thread_data);
+    if (qc->qemu_thread_data) {
+        g_free(qc->qemu_thread_data);
     }
 
     /* free */
-    g_free(uc->init_target_page);
+    g_free(qc->init_target_page);
 
     // Other auxilaries.
-    g_free(uc->l1_map);
+    g_free(qc->l1_map);
 
-    if (uc->bounce.buffer) {
-        free(uc->bounce.buffer);
+    if (qc->bounce.buffer) {
+        free(qc->bounce.buffer);
     }
 
     // free hooks and hook lists
     for (i = 0; i < QC_HOOK_MAX; i++) {
-        cur = uc->hook[i].head;
+        cur = qc->hook[i].head;
         // hook can be in more than one list
         // so we refcount to know when to free
         while (cur) {
@@ -426,39 +426,39 @@ qc_err qc_close(qc_engine *uc)
             }
             cur = cur->next;
         }
-        list_clear(&uc->hook[i]);
+        list_clear(&qc->hook[i]);
     }
 
-    free(uc->mapped_blocks);
+    free(qc->mapped_blocks);
 
     // free the saved contexts list and notify them that uc has been closed.
-    cur = uc->saved_contexts.head;
+    cur = qc->saved_contexts.head;
     while (cur != NULL) {
         struct list_item *next = cur->next;
         struct qc_context *context = (struct qc_context *)cur->data;
-        context->uc = NULL;
+        context->qc = NULL;
         cur = next;
     }
-    list_clear(&uc->saved_contexts);
+    list_clear(&qc->saved_contexts);
 
-    g_tree_destroy(uc->exits);
+    g_tree_destroy(qc->exits);
 
     // finally, free uc itself.
-    memset(uc, 0, sizeof(*uc));
-    free(uc);
+    memset(qc, 0, sizeof(*qc));
+    free(qc);
 
     return QC_ERR_OK;
 }
 
 QNICORN_EXPORT
-qc_err qc_reg_read_batch(qc_engine *uc, int *ids, void **vals, int count)
+qc_err qc_reg_read_batch(qc_engine *qc, int *ids, void **vals, int count)
 {
     int ret = QC_ERR_OK;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
-    if (uc->reg_read) {
-        ret = uc->reg_read(uc, (unsigned int *)ids, vals, count);
+    if (qc->reg_read) {
+        ret = qc->reg_read(qc, (unsigned int *)ids, vals, count);
     } else {
         return QC_ERR_HANDLE;
     }
@@ -467,14 +467,14 @@ qc_err qc_reg_read_batch(qc_engine *uc, int *ids, void **vals, int count)
 }
 
 QNICORN_EXPORT
-qc_err qc_reg_write_batch(qc_engine *uc, int *ids, void *const *vals, int count)
+qc_err qc_reg_write_batch(qc_engine *qc, int *ids, void *const *vals, int count)
 {
     int ret = QC_ERR_OK;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
-    if (uc->reg_write) {
-        ret = uc->reg_write(uc, (unsigned int *)ids, vals, count);
+    if (qc->reg_write) {
+        ret = qc->reg_write(qc, (unsigned int *)ids, vals, count);
     } else {
         return QC_ERR_HANDLE;
     }
@@ -483,27 +483,27 @@ qc_err qc_reg_write_batch(qc_engine *uc, int *ids, void *const *vals, int count)
 }
 
 QNICORN_EXPORT
-qc_err qc_reg_read(qc_engine *uc, int regid, void *value)
+qc_err qc_reg_read(qc_engine *qc, int regid, void *value)
 {
-    QC_INIT(uc);
-    return qc_reg_read_batch(uc, &regid, &value, 1);
+    QC_INIT(qc);
+    return qc_reg_read_batch(qc, &regid, &value, 1);
 }
 
 QNICORN_EXPORT
-qc_err qc_reg_write(qc_engine *uc, int regid, const void *value)
+qc_err qc_reg_write(qc_engine *qc, int regid, const void *value)
 {
-    QC_INIT(uc);
-    return qc_reg_write_batch(uc, &regid, (void *const *)&value, 1);
+    QC_INIT(qc);
+    return qc_reg_write_batch(qc, &regid, (void *const *)&value, 1);
 }
 
 // check if a memory area is mapped
 // this is complicated because an area can overlap adjacent blocks
-static bool check_mem_area(qc_engine *uc, uint64_t address, size_t size)
+static bool check_mem_area(qc_engine *qc, uint64_t address, size_t size)
 {
     size_t count = 0, len;
 
     while (count < size) {
-        MemoryRegion *mr = memory_mapping(uc, address);
+        MemoryRegion *mr = memory_mapping(qc, address);
         if (mr) {
             len = (size_t)MIN(size - count, mr->end - address);
             count += len;
@@ -517,31 +517,31 @@ static bool check_mem_area(qc_engine *uc, uint64_t address, size_t size)
 }
 
 QNICORN_EXPORT
-qc_err qc_mem_read(qc_engine *uc, uint64_t address, void *_bytes, size_t size)
+qc_err qc_mem_read(qc_engine *qc, uint64_t address, void *_bytes, size_t size)
 {
     size_t count = 0, len;
     uint8_t *bytes = _bytes;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
     // qemu cpu_physical_memory_rw() size is an int
     if (size > INT_MAX)
         return QC_ERR_ARG;
 
-    if (uc->mem_redirect) {
-        address = uc->mem_redirect(address);
+    if (qc->mem_redirect) {
+        address = qc->mem_redirect(address);
     }
 
-    if (!check_mem_area(uc, address, size)) {
+    if (!check_mem_area(qc, address, size)) {
         return QC_ERR_READ_UNMAPPED;
     }
 
     // memory area can overlap adjacent memory blocks
     while (count < size) {
-        MemoryRegion *mr = memory_mapping(uc, address);
+        MemoryRegion *mr = memory_mapping(qc, address);
         if (mr) {
             len = (size_t)MIN(size - count, mr->end - address);
-            if (uc->read_mem(&uc->address_space_memory, address, bytes, len) ==
+            if (qc->read_mem(&qc->address_space_memory, address, bytes, len) ==
                 false) {
                 break;
             }
@@ -561,46 +561,46 @@ qc_err qc_mem_read(qc_engine *uc, uint64_t address, void *_bytes, size_t size)
 }
 
 QNICORN_EXPORT
-qc_err qc_mem_write(qc_engine *uc, uint64_t address, const void *_bytes,
+qc_err qc_mem_write(qc_engine *qc, uint64_t address, const void *_bytes,
                     size_t size)
 {
     size_t count = 0, len;
     const uint8_t *bytes = _bytes;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
     // qemu cpu_physical_memory_rw() size is an int
     if (size > INT_MAX)
         return QC_ERR_ARG;
 
-    if (uc->mem_redirect) {
-        address = uc->mem_redirect(address);
+    if (qc->mem_redirect) {
+        address = qc->mem_redirect(address);
     }
 
-    if (!check_mem_area(uc, address, size)) {
+    if (!check_mem_area(qc, address, size)) {
         return QC_ERR_WRITE_UNMAPPED;
     }
 
     // memory area can overlap adjacent memory blocks
     while (count < size) {
-        MemoryRegion *mr = memory_mapping(uc, address);
+        MemoryRegion *mr = memory_mapping(qc, address);
         if (mr) {
             uint32_t operms = mr->perms;
             if (!(operms & QC_PROT_WRITE)) { // write protected
                 // but this is not the program accessing memory, so temporarily
                 // mark writable
-                uc->readonly_mem(mr, false);
+                qc->readonly_mem(mr, false);
             }
 
             len = (size_t)MIN(size - count, mr->end - address);
-            if (uc->write_mem(&uc->address_space_memory, address, bytes, len) ==
+            if (qc->write_mem(&qc->address_space_memory, address, bytes, len) ==
                 false) {
                 break;
             }
 
             if (!(operms & QC_PROT_WRITE)) { // write protected
                 // now write protect it again
-                uc->readonly_mem(mr, true);
+                qc->readonly_mem(mr, true);
             }
 
             count += len;
@@ -621,58 +621,58 @@ qc_err qc_mem_write(qc_engine *uc, uint64_t address, const void *_bytes,
 #define TIMEOUT_STEP 2 // microseconds
 static void *_timeout_fn(void *arg)
 {
-    struct qc_struct *uc = arg;
+    struct qc_struct *qc = arg;
     int64_t current_time = get_clock();
 
     do {
         usleep(TIMEOUT_STEP);
         // perhaps emulation is even done before timeout?
-        if (uc->emulation_done) {
+        if (qc->emulation_done) {
             break;
         }
-    } while ((uint64_t)(get_clock() - current_time) < uc->timeout);
+    } while ((uint64_t)(get_clock() - current_time) < qc->timeout);
 
     // timeout before emulation is done?
-    if (!uc->emulation_done) {
-        uc->timed_out = true;
+    if (!qc->emulation_done) {
+        qc->timed_out = true;
         // force emulation to stop
-        qc_emu_stop(uc);
+        qc_emu_stop(qc);
     }
 
     return NULL;
 }
 
-static void enable_emu_timer(qc_engine *uc, uint64_t timeout)
+static void enable_emu_timer(qc_engine *qc, uint64_t timeout)
 {
-    uc->timeout = timeout;
-    qemu_thread_create(uc, &uc->timer, "timeout", _timeout_fn, uc,
+    qc->timeout = timeout;
+    qemu_thread_create(qc, &qc->timer, "timeout", _timeout_fn, qc,
                        QEMU_THREAD_JOINABLE);
 }
 
-static void hook_count_cb(struct qc_struct *uc, uint64_t address, uint32_t size,
+static void hook_count_cb(struct qc_struct *qc, uint64_t address, uint32_t size,
                           void *user_data)
 {
     // count this instruction. ah ah ah.
-    uc->emu_counter++;
-    // printf(":: emu counter = %u, at %lx\n", uc->emu_counter, address);
+    qc->emu_counter++;
+    // printf(":: emu counter = %u, at %lx\n", qc->emu_counter, address);
 
-    if (uc->emu_counter > uc->emu_count) {
-        // printf(":: emu counter = %u, stop emulation\n", uc->emu_counter);
-        qc_emu_stop(uc);
+    if (qc->emu_counter > qc->emu_count) {
+        // printf(":: emu counter = %u, stop emulation\n", qc->emu_counter);
+        qc_emu_stop(qc);
     }
 }
 
-static void clear_deleted_hooks(qc_engine *uc)
+static void clear_deleted_hooks(qc_engine *qc)
 {
     struct list_item *cur;
     struct hook *hook;
     int i;
 
-    for (cur = uc->hooks_to_del.head;
+    for (cur = qc->hooks_to_del.head;
          cur != NULL && (hook = (struct hook *)cur->data); cur = cur->next) {
         assert(hook->to_delete);
         for (i = 0; i < QC_HOOK_MAX; i++) {
-            if (list_remove(&uc->hook[i], (void *)hook)) {
+            if (list_remove(&qc->hook[i], (void *)hook)) {
                 if (--hook->refs == 0) {
                     free(hook);
                 }
@@ -683,108 +683,108 @@ static void clear_deleted_hooks(qc_engine *uc)
         }
     }
 
-    list_clear(&uc->hooks_to_del);
+    list_clear(&qc->hooks_to_del);
 }
 
 QNICORN_EXPORT
-qc_err qc_emu_start(qc_engine *uc, uint64_t begin, uint64_t until,
+qc_err qc_emu_start(qc_engine *qc, uint64_t begin, uint64_t until,
                     uint64_t timeout, size_t count)
 {
     // reset the counter
-    uc->emu_counter = 0;
-    uc->invalid_error = QC_ERR_OK;
-    uc->emulation_done = false;
-    uc->size_recur_mem = 0;
-    uc->timed_out = false;
-    uc->first_tb = true;
+    qc->emu_counter = 0;
+    qc->invalid_error = QC_ERR_OK;
+    qc->emulation_done = false;
+    qc->size_recur_mem = 0;
+    qc->timed_out = false;
+    qc->first_tb = true;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
-    switch (uc->arch) {
+    switch (qc->arch) {
     default:
         break;
 #ifdef QNICORN_HAS_M68K
     case QC_ARCH_M68K:
-        qc_reg_write(uc, QC_M68K_REG_PC, &begin);
+        qc_reg_write(qc, QC_M68K_REG_PC, &begin);
         break;
 #endif
 #ifdef QNICORN_HAS_X86
     case QC_ARCH_X86:
-        switch (uc->mode) {
+        switch (qc->mode) {
         default:
             break;
         case QC_MODE_16: {
             uint64_t ip;
             uint16_t cs;
 
-            qc_reg_read(uc, QC_X86_REG_CS, &cs);
+            qc_reg_read(qc, QC_X86_REG_CS, &cs);
             // compensate for later adding up IP & CS
             ip = begin - cs * 16;
-            qc_reg_write(uc, QC_X86_REG_IP, &ip);
+            qc_reg_write(qc, QC_X86_REG_IP, &ip);
             break;
         }
         case QC_MODE_32:
-            qc_reg_write(uc, QC_X86_REG_EIP, &begin);
+            qc_reg_write(qc, QC_X86_REG_EIP, &begin);
             break;
         case QC_MODE_64:
-            qc_reg_write(uc, QC_X86_REG_RIP, &begin);
+            qc_reg_write(qc, QC_X86_REG_RIP, &begin);
             break;
         }
         break;
 #endif
 #ifdef QNICORN_HAS_ARM
     case QC_ARCH_ARM:
-        qc_reg_write(uc, QC_ARM_REG_R15, &begin);
+        qc_reg_write(qc, QC_ARM_REG_R15, &begin);
         break;
 #endif
 #ifdef QNICORN_HAS_ARM64
     case QC_ARCH_ARM64:
-        qc_reg_write(uc, QC_ARM64_REG_PC, &begin);
+        qc_reg_write(qc, QC_ARM64_REG_PC, &begin);
         break;
 #endif
 #ifdef QNICORN_HAS_MIPS
     case QC_ARCH_MIPS:
         // TODO: MIPS32/MIPS64/BIGENDIAN etc
-        qc_reg_write(uc, QC_MIPS_REG_PC, &begin);
+        qc_reg_write(qc, QC_MIPS_REG_PC, &begin);
         break;
 #endif
 #ifdef QNICORN_HAS_SPARC
     case QC_ARCH_SPARC:
         // TODO: Sparc/Sparc64
-        qc_reg_write(uc, QC_SPARC_REG_PC, &begin);
+        qc_reg_write(qc, QC_SPARC_REG_PC, &begin);
         break;
 #endif
 #ifdef QNICORN_HAS_PPC
     case QC_ARCH_PPC:
-        qc_reg_write(uc, QC_PPC_REG_PC, &begin);
+        qc_reg_write(qc, QC_PPC_REG_PC, &begin);
         break;
 #endif
 #ifdef QNICORN_HAS_RISCV
     case QC_ARCH_RISCV:
-        qc_reg_write(uc, QC_RISCV_REG_PC, &begin);
+        qc_reg_write(qc, QC_RISCV_REG_PC, &begin);
         break;
 #endif
     }
 
-    uc->stop_request = false;
+    qc->stop_request = false;
 
-    uc->emu_count = count;
+    qc->emu_count = count;
     // remove count hook if counting isn't necessary
-    if (count <= 0 && uc->count_hook != 0) {
-        qc_hook_del(uc, uc->count_hook);
-        uc->count_hook = 0;
+    if (count <= 0 && qc->count_hook != 0) {
+        qc_hook_del(qc, qc->count_hook);
+        qc->count_hook = 0;
     }
     // set up count hook to count instructions.
-    if (count > 0 && uc->count_hook == 0) {
+    if (count > 0 && qc->count_hook == 0) {
         qc_err err;
         // callback to count instructions must be run before everything else,
         // so instead of appending, we must insert the hook at the begin
         // of the hook list
-        uc->hook_insert = 1;
-        err = qc_hook_add(uc, &uc->count_hook, QC_HOOK_CODE, hook_count_cb,
+        qc->hook_insert = 1;
+        err = qc_hook_add(qc, &qc->count_hook, QC_HOOK_CODE, hook_count_cb,
                           NULL, 1, 0);
         // restore to append mode for qc_hook_add()
-        uc->hook_insert = 0;
+        qc->hook_insert = 0;
         if (err != QC_ERR_OK) {
             return err;
         }
@@ -792,45 +792,45 @@ qc_err qc_emu_start(qc_engine *uc, uint64_t begin, uint64_t until,
 
     // If QC_CTL_QC_USE_EXITS is set, then the @until param won't have any
     // effect. This is designed for the backward compatibility.
-    if (!uc->use_exits) {
-        g_tree_remove_all(uc->exits);
-        qc_add_exit(uc, until);
+    if (!qc->use_exits) {
+        g_tree_remove_all(qc->exits);
+        qc_add_exit(qc, until);
     }
 
     if (timeout) {
-        enable_emu_timer(uc, timeout * 1000); // microseconds -> nanoseconds
+        enable_emu_timer(qc, timeout * 1000); // microseconds -> nanoseconds
     }
 
-    uc->vm_start(uc);
+    qc->vm_start(qc);
 
     // emulation is done
-    uc->emulation_done = true;
+    qc->emulation_done = true;
 
     // remove hooks to delete
-    clear_deleted_hooks(uc);
+    clear_deleted_hooks(qc);
 
     if (timeout) {
         // wait for the timer to finish
-        qemu_thread_join(&uc->timer);
+        qemu_thread_join(&qc->timer);
     }
 
-    return uc->invalid_error;
+    return qc->invalid_error;
 }
 
 QNICORN_EXPORT
-qc_err qc_emu_stop(qc_engine *uc)
+qc_err qc_emu_stop(qc_engine *qc)
 {
-    QC_INIT(uc);
+    QC_INIT(qc);
 
-    if (uc->emulation_done) {
+    if (qc->emulation_done) {
         return QC_ERR_OK;
     }
 
-    uc->stop_request = true;
+    qc->stop_request = true;
     // TODO: make this atomic somehow?
-    if (uc->cpu) {
+    if (qc->cpu) {
         // exit the current TB
-        cpu_exit(uc->cpu);
+        cpu_exit(qc->cpu);
     }
 
     return QC_ERR_OK;
@@ -844,18 +844,18 @@ qc_err qc_emu_stop(qc_engine *uc)
 //
 // if there is overlap, between regions, ending address will be higher than the
 // starting address of the mapping at returned index
-static int bsearch_mapped_blocks(const qc_engine *uc, uint64_t address)
+static int bsearch_mapped_blocks(const qc_engine *qc, uint64_t address)
 {
     int left, right, mid;
     MemoryRegion *mapping;
 
     left = 0;
-    right = uc->mapped_block_count;
+    right = qc->mapped_block_count;
 
     while (left < right) {
         mid = left + (right - left) / 2;
 
-        mapping = uc->mapped_blocks[mid];
+        mapping = qc->mapped_blocks[mid];
 
         if (mapping->end - 1 < address) {
             left = mid + 1;
@@ -870,19 +870,19 @@ static int bsearch_mapped_blocks(const qc_engine *uc, uint64_t address)
 }
 
 // find if a memory range overlaps with existing mapped regions
-static bool memory_overlap(struct qc_struct *uc, uint64_t begin, size_t size)
+static bool memory_overlap(struct qc_struct *qc, uint64_t begin, size_t size)
 {
     unsigned int i;
     uint64_t end = begin + size - 1;
 
-    i = bsearch_mapped_blocks(uc, begin);
+    i = bsearch_mapped_blocks(qc, begin);
 
     // is this the highest region with no possible overlap?
-    if (i >= uc->mapped_block_count)
+    if (i >= qc->mapped_block_count)
         return false;
 
     // end address overlaps this region?
-    if (end >= uc->mapped_blocks[i]->addr)
+    if (end >= qc->mapped_blocks[i]->addr)
         return true;
 
     // not found
@@ -890,7 +890,7 @@ static bool memory_overlap(struct qc_struct *uc, uint64_t begin, size_t size)
 }
 
 // common setup/error checking shared between qc_mem_map and qc_mem_map_ptr
-static qc_err mem_map(qc_engine *uc, uint64_t address, size_t size,
+static qc_err mem_map(qc_engine *qc, uint64_t address, size_t size,
                       uint32_t perms, MemoryRegion *block)
 {
     MemoryRegion **regions;
@@ -900,29 +900,29 @@ static qc_err mem_map(qc_engine *uc, uint64_t address, size_t size,
         return QC_ERR_NOMEM;
     }
 
-    if ((uc->mapped_block_count & (MEM_BLOCK_INCR - 1)) == 0) { // time to grow
+    if ((qc->mapped_block_count & (MEM_BLOCK_INCR - 1)) == 0) { // time to grow
         regions = (MemoryRegion **)g_realloc(
-            uc->mapped_blocks,
-            sizeof(MemoryRegion *) * (uc->mapped_block_count + MEM_BLOCK_INCR));
+            qc->mapped_blocks,
+            sizeof(MemoryRegion *) * (qc->mapped_block_count + MEM_BLOCK_INCR));
         if (regions == NULL) {
             return QC_ERR_NOMEM;
         }
-        uc->mapped_blocks = regions;
+        qc->mapped_blocks = regions;
     }
 
-    pos = bsearch_mapped_blocks(uc, block->addr);
+    pos = bsearch_mapped_blocks(qc, block->addr);
 
     // shift the array right to give space for the new pointer
-    memmove(&uc->mapped_blocks[pos + 1], &uc->mapped_blocks[pos],
-            sizeof(MemoryRegion *) * (uc->mapped_block_count - pos));
+    memmove(&qc->mapped_blocks[pos + 1], &qc->mapped_blocks[pos],
+            sizeof(MemoryRegion *) * (qc->mapped_block_count - pos));
 
-    uc->mapped_blocks[pos] = block;
-    uc->mapped_block_count++;
+    qc->mapped_blocks[pos] = block;
+    qc->mapped_block_count++;
 
     return QC_ERR_OK;
 }
 
-static qc_err mem_map_check(qc_engine *uc, uint64_t address, size_t size,
+static qc_err mem_map_check(qc_engine *qc, uint64_t address, size_t size,
                             uint32_t perms)
 {
     if (size == 0) {
@@ -935,13 +935,13 @@ static qc_err mem_map_check(qc_engine *uc, uint64_t address, size_t size,
         return QC_ERR_ARG;
     }
 
-    // address must be aligned to uc->target_page_size
-    if ((address & uc->target_page_align) != 0) {
+    // address must be aligned to qc->target_page_size
+    if ((address & qc->target_page_align) != 0) {
         return QC_ERR_ARG;
     }
 
-    // size must be multiple of uc->target_page_size
-    if ((size & uc->target_page_align) != 0) {
+    // size must be multiple of qc->target_page_size
+    if ((size & qc->target_page_align) != 0) {
         return QC_ERR_ARG;
     }
 
@@ -951,7 +951,7 @@ static qc_err mem_map_check(qc_engine *uc, uint64_t address, size_t size,
     }
 
     // this area overlaps existing mapped regions?
-    if (memory_overlap(uc, address, size)) {
+    if (memory_overlap(qc, address, size)) {
         return QC_ERR_MAP;
     }
 
@@ -959,82 +959,82 @@ static qc_err mem_map_check(qc_engine *uc, uint64_t address, size_t size,
 }
 
 QNICORN_EXPORT
-qc_err qc_mem_map(qc_engine *uc, uint64_t address, size_t size, uint32_t perms)
+qc_err qc_mem_map(qc_engine *qc, uint64_t address, size_t size, uint32_t perms)
 {
     qc_err res;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
-    if (uc->mem_redirect) {
-        address = uc->mem_redirect(address);
+    if (qc->mem_redirect) {
+        address = qc->mem_redirect(address);
     }
 
-    res = mem_map_check(uc, address, size, perms);
+    res = mem_map_check(qc, address, size, perms);
     if (res) {
         return res;
     }
 
-    return mem_map(uc, address, size, perms,
-                   uc->memory_map(uc, address, size, perms));
+    return mem_map(qc, address, size, perms,
+                   qc->memory_map(qc, address, size, perms));
 }
 
 QNICORN_EXPORT
-qc_err qc_mem_map_ptr(qc_engine *uc, uint64_t address, size_t size,
+qc_err qc_mem_map_ptr(qc_engine *qc, uint64_t address, size_t size,
                       uint32_t perms, void *ptr)
 {
     qc_err res;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
     if (ptr == NULL) {
         return QC_ERR_ARG;
     }
 
-    if (uc->mem_redirect) {
-        address = uc->mem_redirect(address);
+    if (qc->mem_redirect) {
+        address = qc->mem_redirect(address);
     }
 
-    res = mem_map_check(uc, address, size, perms);
+    res = mem_map_check(qc, address, size, perms);
     if (res) {
         return res;
     }
 
-    return mem_map(uc, address, size, QC_PROT_ALL,
-                   uc->memory_map_ptr(uc, address, size, perms, ptr));
+    return mem_map(qc, address, size, QC_PROT_ALL,
+                   qc->memory_map_ptr(qc, address, size, perms, ptr));
 }
 
 QNICORN_EXPORT
-qc_err qc_mmio_map(qc_engine *uc, uint64_t address, size_t size,
+qc_err qc_mmio_map(qc_engine *qc, uint64_t address, size_t size,
                    qc_cb_mmio_read_t read_cb, void *user_data_read,
                    qc_cb_mmio_write_t write_cb, void *user_data_write)
 {
     qc_err res;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
-    if (uc->mem_redirect) {
-        address = uc->mem_redirect(address);
+    if (qc->mem_redirect) {
+        address = qc->mem_redirect(address);
     }
 
-    res = mem_map_check(uc, address, size, QC_PROT_ALL);
+    res = mem_map_check(qc, address, size, QC_PROT_ALL);
     if (res)
         return res;
 
     // The callbacks do not need to be checked for NULL here, as their presence
     // (or lack thereof) will determine the permissions used.
-    return mem_map(uc, address, size, QC_PROT_NONE,
-                   uc->memory_map_io(uc, address, size, read_cb, write_cb,
+    return mem_map(qc, address, size, QC_PROT_NONE,
+                   qc->memory_map_io(qc, address, size, read_cb, write_cb,
                                      user_data_read, user_data_write));
 }
 
 // Create a backup copy of the indicated MemoryRegion.
 // Generally used in prepartion for splitting a MemoryRegion.
-static uint8_t *copy_region(struct qc_struct *uc, MemoryRegion *mr)
+static uint8_t *copy_region(struct qc_struct *qc, MemoryRegion *mr)
 {
     uint8_t *block = (uint8_t *)g_malloc0((size_t)int128_get64(mr->size));
     if (block != NULL) {
         qc_err err =
-            qc_mem_read(uc, mr->addr, block, (size_t)int128_get64(mr->size));
+            qc_mem_read(qc, mr->addr, block, (size_t)int128_get64(mr->size));
         if (err != QC_ERR_OK) {
             free(block);
             block = NULL;
@@ -1059,7 +1059,7 @@ static uint8_t *copy_region(struct qc_struct *uc, MemoryRegion *mr)
  */
 // TODO: investigate whether qemu region manipulation functions already offered
 // this capability
-static bool split_region(struct qc_struct *uc, MemoryRegion *mr,
+static bool split_region(struct qc_struct *qc, MemoryRegion *mr,
                          uint64_t address, size_t size, bool do_delete)
 {
     uint8_t *backup;
@@ -1087,7 +1087,7 @@ static bool split_region(struct qc_struct *uc, MemoryRegion *mr,
         return false;
     }
 
-    QLIST_FOREACH(block, &uc->ram_list.blocks, next)
+    QLIST_FOREACH(block, &qc->ram_list.blocks, next)
     {
         if (block->offset <= mr->addr &&
             block->used_length >= (mr->end - mr->addr)) {
@@ -1106,7 +1106,7 @@ static bool split_region(struct qc_struct *uc, MemoryRegion *mr,
     if (block->flags & 1) {
         backup = block->host;
     } else {
-        backup = copy_region(uc, mr);
+        backup = copy_region(qc, mr);
         if (backup == NULL) {
             return false;
         }
@@ -1119,7 +1119,7 @@ static bool split_region(struct qc_struct *uc, MemoryRegion *mr,
     end = mr->end;
 
     // unmap this region first, then do split it later
-    if (qc_mem_unmap(uc, mr->addr, (size_t)int128_get64(mr->size)) !=
+    if (qc_mem_unmap(qc, mr->addr, (size_t)int128_get64(mr->size)) !=
         QC_ERR_OK) {
         goto error;
     }
@@ -1150,14 +1150,14 @@ static bool split_region(struct qc_struct *uc, MemoryRegion *mr,
     // the original allocation at this point
     if (l_size > 0) {
         if (!prealloc) {
-            if (qc_mem_map(uc, begin, l_size, perms) != QC_ERR_OK) {
+            if (qc_mem_map(qc, begin, l_size, perms) != QC_ERR_OK) {
                 goto error;
             }
-            if (qc_mem_write(uc, begin, backup, l_size) != QC_ERR_OK) {
+            if (qc_mem_write(qc, begin, backup, l_size) != QC_ERR_OK) {
                 goto error;
             }
         } else {
-            if (qc_mem_map_ptr(uc, begin, l_size, perms, backup) != QC_ERR_OK) {
+            if (qc_mem_map_ptr(qc, begin, l_size, perms, backup) != QC_ERR_OK) {
                 goto error;
             }
         }
@@ -1165,15 +1165,15 @@ static bool split_region(struct qc_struct *uc, MemoryRegion *mr,
 
     if (m_size > 0 && !do_delete) {
         if (!prealloc) {
-            if (qc_mem_map(uc, address, m_size, perms) != QC_ERR_OK) {
+            if (qc_mem_map(qc, address, m_size, perms) != QC_ERR_OK) {
                 goto error;
             }
-            if (qc_mem_write(uc, address, backup + l_size, m_size) !=
+            if (qc_mem_write(qc, address, backup + l_size, m_size) !=
                 QC_ERR_OK) {
                 goto error;
             }
         } else {
-            if (qc_mem_map_ptr(uc, address, m_size, perms, backup + l_size) !=
+            if (qc_mem_map_ptr(qc, address, m_size, perms, backup + l_size) !=
                 QC_ERR_OK) {
                 goto error;
             }
@@ -1182,15 +1182,15 @@ static bool split_region(struct qc_struct *uc, MemoryRegion *mr,
 
     if (r_size > 0) {
         if (!prealloc) {
-            if (qc_mem_map(uc, chunk_end, r_size, perms) != QC_ERR_OK) {
+            if (qc_mem_map(qc, chunk_end, r_size, perms) != QC_ERR_OK) {
                 goto error;
             }
-            if (qc_mem_write(uc, chunk_end, backup + l_size + m_size, r_size) !=
+            if (qc_mem_write(qc, chunk_end, backup + l_size + m_size, r_size) !=
                 QC_ERR_OK) {
                 goto error;
             }
         } else {
-            if (qc_mem_map_ptr(uc, chunk_end, r_size, perms,
+            if (qc_mem_map_ptr(qc, chunk_end, r_size, perms,
                                backup + l_size + m_size) != QC_ERR_OK) {
                 goto error;
             }
@@ -1210,7 +1210,7 @@ error:
 }
 
 QNICORN_EXPORT
-qc_err qc_mem_protect(struct qc_struct *uc, uint64_t address, size_t size,
+qc_err qc_mem_protect(struct qc_struct *qc, uint64_t address, size_t size,
                       uint32_t perms)
 {
     MemoryRegion *mr;
@@ -1218,20 +1218,20 @@ qc_err qc_mem_protect(struct qc_struct *uc, uint64_t address, size_t size,
     size_t count, len;
     bool remove_exec = false;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
     if (size == 0) {
         // trivial case, no change
         return QC_ERR_OK;
     }
 
-    // address must be aligned to uc->target_page_size
-    if ((address & uc->target_page_align) != 0) {
+    // address must be aligned to qc->target_page_size
+    if ((address & qc->target_page_align) != 0) {
         return QC_ERR_ARG;
     }
 
-    // size must be multiple of uc->target_page_size
-    if ((size & uc->target_page_align) != 0) {
+    // size must be multiple of qc->target_page_size
+    if ((size & qc->target_page_align) != 0) {
         return QC_ERR_ARG;
     }
 
@@ -1240,12 +1240,12 @@ qc_err qc_mem_protect(struct qc_struct *uc, uint64_t address, size_t size,
         return QC_ERR_ARG;
     }
 
-    if (uc->mem_redirect) {
-        address = uc->mem_redirect(address);
+    if (qc->mem_redirect) {
+        address = qc->mem_redirect(address);
     }
 
     // check that user's entire requested block is mapped
-    if (!check_mem_area(uc, address, size)) {
+    if (!check_mem_area(qc, address, size)) {
         return QC_ERR_NOMEM;
     }
 
@@ -1254,20 +1254,20 @@ qc_err qc_mem_protect(struct qc_struct *uc, uint64_t address, size_t size,
     addr = address;
     count = 0;
     while (count < size) {
-        mr = memory_mapping(uc, addr);
+        mr = memory_mapping(qc, addr);
         len = (size_t)MIN(size - count, mr->end - addr);
-        if (!split_region(uc, mr, addr, len, false)) {
+        if (!split_region(qc, mr, addr, len, false)) {
             return QC_ERR_NOMEM;
         }
 
-        mr = memory_mapping(uc, addr);
+        mr = memory_mapping(qc, addr);
         // will this remove EXEC permission?
         if (((mr->perms & QC_PROT_EXEC) != 0) &&
             ((perms & QC_PROT_EXEC) == 0)) {
             remove_exec = true;
         }
         mr->perms = perms;
-        uc->readonly_mem(mr, (perms & QC_PROT_WRITE) == 0);
+        qc->readonly_mem(mr, (perms & QC_PROT_WRITE) == 0);
 
         count += len;
         addr += len;
@@ -1276,43 +1276,43 @@ qc_err qc_mem_protect(struct qc_struct *uc, uint64_t address, size_t size,
     // if EXEC permission is removed, then quit TB and continue at the same
     // place
     if (remove_exec) {
-        uc->quit_request = true;
-        qc_emu_stop(uc);
+        qc->quit_request = true;
+        qc_emu_stop(qc);
     }
 
     return QC_ERR_OK;
 }
 
 QNICORN_EXPORT
-qc_err qc_mem_unmap(struct qc_struct *uc, uint64_t address, size_t size)
+qc_err qc_mem_unmap(struct qc_struct *qc, uint64_t address, size_t size)
 {
     MemoryRegion *mr;
     uint64_t addr;
     size_t count, len;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
     if (size == 0) {
         // nothing to unmap
         return QC_ERR_OK;
     }
 
-    // address must be aligned to uc->target_page_size
-    if ((address & uc->target_page_align) != 0) {
+    // address must be aligned to qc->target_page_size
+    if ((address & qc->target_page_align) != 0) {
         return QC_ERR_ARG;
     }
 
-    // size must be multiple of uc->target_page_size
-    if ((size & uc->target_page_align) != 0) {
+    // size must be multiple of qc->target_page_size
+    if ((size & qc->target_page_align) != 0) {
         return QC_ERR_ARG;
     }
 
-    if (uc->mem_redirect) {
-        address = uc->mem_redirect(address);
+    if (qc->mem_redirect) {
+        address = qc->mem_redirect(address);
     }
 
     // check that user's entire requested block is mapped
-    if (!check_mem_area(uc, address, size)) {
+    if (!check_mem_area(qc, address, size)) {
         return QC_ERR_NOMEM;
     }
 
@@ -1321,17 +1321,17 @@ qc_err qc_mem_unmap(struct qc_struct *uc, uint64_t address, size_t size)
     addr = address;
     count = 0;
     while (count < size) {
-        mr = memory_mapping(uc, addr);
+        mr = memory_mapping(qc, addr);
         len = (size_t)MIN(size - count, mr->end - addr);
-        if (!split_region(uc, mr, addr, len, true)) {
+        if (!split_region(qc, mr, addr, len, true)) {
             return QC_ERR_NOMEM;
         }
 
         // if we can retrieve the mapping, then no splitting took place
         // so unmap here
-        mr = memory_mapping(uc, addr);
+        mr = memory_mapping(qc, addr);
         if (mr != NULL) {
-            uc->memory_unmap(uc, mr);
+            qc->memory_unmap(qc, mr);
         }
         count += len;
         addr += len;
@@ -1341,44 +1341,44 @@ qc_err qc_mem_unmap(struct qc_struct *uc, uint64_t address, size_t size)
 }
 
 // find the memory region of this address
-MemoryRegion *memory_mapping(struct qc_struct *uc, uint64_t address)
+MemoryRegion *memory_mapping(struct qc_struct *qc, uint64_t address)
 {
     unsigned int i;
 
-    if (uc->mapped_block_count == 0) {
+    if (qc->mapped_block_count == 0) {
         return NULL;
     }
 
-    if (uc->mem_redirect) {
-        address = uc->mem_redirect(address);
+    if (qc->mem_redirect) {
+        address = qc->mem_redirect(address);
     }
 
     // try with the cache index first
-    i = uc->mapped_block_cache_index;
+    i = qc->mapped_block_cache_index;
 
-    if (i < uc->mapped_block_count && address >= uc->mapped_blocks[i]->addr &&
-        address < uc->mapped_blocks[i]->end) {
-        return uc->mapped_blocks[i];
+    if (i < qc->mapped_block_count && address >= qc->mapped_blocks[i]->addr &&
+        address < qc->mapped_blocks[i]->end) {
+        return qc->mapped_blocks[i];
     }
 
-    i = bsearch_mapped_blocks(uc, address);
+    i = bsearch_mapped_blocks(qc, address);
 
-    if (i < uc->mapped_block_count && address >= uc->mapped_blocks[i]->addr &&
-        address <= uc->mapped_blocks[i]->end - 1)
-        return uc->mapped_blocks[i];
+    if (i < qc->mapped_block_count && address >= qc->mapped_blocks[i]->addr &&
+        address <= qc->mapped_blocks[i]->end - 1)
+        return qc->mapped_blocks[i];
 
     // not found
     return NULL;
 }
 
 QNICORN_EXPORT
-qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
+qc_err qc_hook_add(qc_engine *qc, qc_hook *hh, int type, void *callback,
                    void *user_data, uint64_t begin, uint64_t end, ...)
 {
     int ret = QC_ERR_OK;
     int i = 0;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
     struct hook *hook = calloc(1, sizeof(struct hook));
     if (hook == NULL) {
@@ -1402,20 +1402,20 @@ qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
         hook->insn = va_arg(valist, int);
         va_end(valist);
 
-        if (uc->insn_hook_validate) {
-            if (!uc->insn_hook_validate(hook->insn)) {
+        if (qc->insn_hook_validate) {
+            if (!qc->insn_hook_validate(hook->insn)) {
                 free(hook);
                 return QC_ERR_HOOK;
             }
         }
 
-        if (uc->hook_insert) {
-            if (list_insert(&uc->hook[QC_HOOK_INSN_IDX], hook) == NULL) {
+        if (qc->hook_insert) {
+            if (list_insert(&qc->hook[QC_HOOK_INSN_IDX], hook) == NULL) {
                 free(hook);
                 return QC_ERR_NOMEM;
             }
         } else {
-            if (list_append(&uc->hook[QC_HOOK_INSN_IDX], hook) == NULL) {
+            if (list_append(&qc->hook[QC_HOOK_INSN_IDX], hook) == NULL) {
                 free(hook);
                 return QC_ERR_NOMEM;
             }
@@ -1433,20 +1433,20 @@ qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
         hook->op_flags = va_arg(valist, int);
         va_end(valist);
 
-        if (uc->opcode_hook_invalidate) {
-            if (!uc->opcode_hook_invalidate(hook->op, hook->op_flags)) {
+        if (qc->opcode_hook_invalidate) {
+            if (!qc->opcode_hook_invalidate(hook->op, hook->op_flags)) {
                 free(hook);
                 return QC_ERR_HOOK;
             }
         }
 
-        if (uc->hook_insert) {
-            if (list_insert(&uc->hook[QC_HOOK_TCG_OPCODE_IDX], hook) == NULL) {
+        if (qc->hook_insert) {
+            if (list_insert(&qc->hook[QC_HOOK_TCG_OPCODE_IDX], hook) == NULL) {
                 free(hook);
                 return QC_ERR_NOMEM;
             }
         } else {
-            if (list_append(&uc->hook[QC_HOOK_TCG_OPCODE_IDX], hook) == NULL) {
+            if (list_append(&qc->hook[QC_HOOK_TCG_OPCODE_IDX], hook) == NULL) {
                 free(hook);
                 return QC_ERR_NOMEM;
             }
@@ -1460,15 +1460,15 @@ qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
         if ((type >> i) & 1) {
             // TODO: invalid hook error?
             if (i < QC_HOOK_MAX) {
-                if (uc->hook_insert) {
-                    if (list_insert(&uc->hook[i], hook) == NULL) {
+                if (qc->hook_insert) {
+                    if (list_insert(&qc->hook[i], hook) == NULL) {
                         if (hook->refs == 0) {
                             free(hook);
                         }
                         return QC_ERR_NOMEM;
                     }
                 } else {
-                    if (list_append(&uc->hook[i], hook) == NULL) {
+                    if (list_append(&qc->hook[i], hook) == NULL) {
                         if (hook->refs == 0) {
                             free(hook);
                         }
@@ -1491,12 +1491,12 @@ qc_err qc_hook_add(qc_engine *uc, qc_hook *hh, int type, void *callback,
 }
 
 QNICORN_EXPORT
-qc_err qc_hook_del(qc_engine *uc, qc_hook hh)
+qc_err qc_hook_del(qc_engine *qc, qc_hook hh)
 {
     int i;
     struct hook *hook = (struct hook *)hh;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
     // we can't dereference hook->type if hook is invalid
     // so for now we need to iterate over all possible types to remove the hook
@@ -1504,9 +1504,9 @@ qc_err qc_hook_del(qc_engine *uc, qc_hook hh)
     // an optimization would be to align the hook pointer
     // and store the type mask in the hook pointer.
     for (i = 0; i < QC_HOOK_MAX; i++) {
-        if (list_exists(&uc->hook[i], (void *)hook)) {
+        if (list_exists(&qc->hook[i], (void *)hook)) {
             hook->to_delete = true;
-            list_append(&uc->hooks_to_del, hook);
+            list_append(&qc->hooks_to_del, hook);
         }
     }
 
@@ -1522,9 +1522,9 @@ void helper_qc_traceopcode(struct hook *hook, uint64_t arg1, uint64_t arg2,
 void helper_qc_traceopcode(struct hook *hook, uint64_t arg1, uint64_t arg2,
                            void *handle, uint64_t address)
 {
-    struct qc_struct *uc = handle;
+    struct qc_struct *qc = handle;
 
-    if (unlikely(uc->stop_request)) {
+    if (unlikely(qc->stop_request)) {
         return;
     }
 
@@ -1539,10 +1539,10 @@ void helper_qc_traceopcode(struct hook *hook, uint64_t arg1, uint64_t arg2,
     // hold in most cases for qc_tracecode.
     //
     // TODO: Shall we have a flag to allow users to control whether updating PC?
-    ((qc_hook_tcg_op_2)hook->callback)(uc, address, arg1, arg2,
+    ((qc_hook_tcg_op_2)hook->callback)(qc, address, arg1, arg2,
                                        hook->user_data);
 
-    if (unlikely(uc->stop_request)) {
+    if (unlikely(qc->stop_request)) {
         return;
     }
 }
@@ -1552,7 +1552,7 @@ void helper_qc_tracecode(int32_t size, qc_hook_idx index, void *handle,
 void helper_qc_tracecode(int32_t size, qc_hook_idx index, void *handle,
                          int64_t address)
 {
-    struct qc_struct *uc = handle;
+    struct qc_struct *qc = handle;
     struct list_item *cur;
     struct hook *hook;
     int hook_flags =
@@ -1563,16 +1563,16 @@ void helper_qc_tracecode(int32_t size, qc_hook_idx index, void *handle,
     index = index & QC_HOOK_IDX_MASK;
 
     // sync PC in CPUArchState with address
-    if (uc->set_pc) {
-        uc->set_pc(uc, address);
+    if (qc->set_pc) {
+        qc->set_pc(qc, address);
     }
 
     // the last callback may already asked to stop emulation
-    if (uc->stop_request && !(hook_flags & QC_HOOK_FLAG_NO_STOP)) {
+    if (qc->stop_request && !(hook_flags & QC_HOOK_FLAG_NO_STOP)) {
         return;
     }
 
-    for (cur = uc->hook[index].head;
+    for (cur = qc->hook[index].head;
          cur != NULL && (hook = (struct hook *)cur->data); cur = cur->next) {
         if (hook->to_delete) {
             continue;
@@ -1581,9 +1581,9 @@ void helper_qc_tracecode(int32_t size, qc_hook_idx index, void *handle,
         // on invalid block/instruction, call instruction counter (if enable),
         // then quit
         if (size == 0) {
-            if (index == QC_HOOK_CODE_IDX && uc->count_hook) {
+            if (index == QC_HOOK_CODE_IDX && qc->count_hook) {
                 // this is the instruction counter (first hook in the list)
-                ((qc_cb_hookcode_t)hook->callback)(uc, address, size,
+                ((qc_cb_hookcode_t)hook->callback)(qc, address, size,
                                                    hook->user_data);
             }
 
@@ -1591,7 +1591,7 @@ void helper_qc_tracecode(int32_t size, qc_hook_idx index, void *handle,
         }
 
         if (HOOK_BOUND_CHECK(hook, (uint64_t)address)) {
-            ((qc_cb_hookcode_t)hook->callback)(uc, address, size,
+            ((qc_cb_hookcode_t)hook->callback)(qc, address, size,
                                                hook->user_data);
         }
 
@@ -1601,21 +1601,21 @@ void helper_qc_tracecode(int32_t size, qc_hook_idx index, void *handle,
         //   normally. No check_exit_request is generated and the hooks are
         //   triggered normally. In other words, the whole IT block is treated
         //   as a single instruction.
-        if (uc->stop_request && !(hook_flags & QC_HOOK_FLAG_NO_STOP)) {
+        if (qc->stop_request && !(hook_flags & QC_HOOK_FLAG_NO_STOP)) {
             break;
         }
     }
 }
 
 QNICORN_EXPORT
-qc_err qc_mem_regions(qc_engine *uc, qc_mem_region **regions, uint32_t *count)
+qc_err qc_mem_regions(qc_engine *qc, qc_mem_region **regions, uint32_t *count)
 {
     uint32_t i;
     qc_mem_region *r = NULL;
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
-    *count = uc->mapped_block_count;
+    *count = qc->mapped_block_count;
 
     if (*count) {
         r = g_malloc0(*count * sizeof(qc_mem_region));
@@ -1626,9 +1626,9 @@ qc_err qc_mem_regions(qc_engine *uc, qc_mem_region **regions, uint32_t *count)
     }
 
     for (i = 0; i < *count; i++) {
-        r[i].begin = uc->mapped_blocks[i]->addr;
-        r[i].end = uc->mapped_blocks[i]->end - 1;
-        r[i].perms = uc->mapped_blocks[i]->perms;
+        r[i].begin = qc->mapped_blocks[i]->addr;
+        r[i].end = qc->mapped_blocks[i]->end - 1;
+        r[i].perms = qc->mapped_blocks[i]->perms;
     }
 
     *regions = r;
@@ -1637,33 +1637,33 @@ qc_err qc_mem_regions(qc_engine *uc, qc_mem_region **regions, uint32_t *count)
 }
 
 QNICORN_EXPORT
-qc_err qc_query(qc_engine *uc, qc_query_type type, size_t *result)
+qc_err qc_query(qc_engine *qc, qc_query_type type, size_t *result)
 {
-    QC_INIT(uc);
+    QC_INIT(qc);
 
     switch (type) {
     default:
         return QC_ERR_ARG;
 
     case QC_QUERY_PAGE_SIZE:
-        *result = uc->target_page_size;
+        *result = qc->target_page_size;
         break;
 
     case QC_QUERY_ARCH:
-        *result = uc->arch;
+        *result = qc->arch;
         break;
 
     case QC_QUERY_MODE:
 #ifdef QNICORN_HAS_ARM
-        if (uc->arch == QC_ARCH_ARM) {
-            return uc->query(uc, type, result);
+        if (qc->arch == QC_ARCH_ARM) {
+            return qc->query(qc, type, result);
         }
 #endif
-        *result = uc->mode;
+        *result = qc->mode;
         break;
 
     case QC_QUERY_TIMEOUT:
-        *result = uc->timed_out;
+        *result = qc->timed_out;
         break;
     }
 
@@ -1671,21 +1671,21 @@ qc_err qc_query(qc_engine *uc, qc_query_type type, size_t *result)
 }
 
 QNICORN_EXPORT
-qc_err qc_context_alloc(qc_engine *uc, qc_context **context)
+qc_err qc_context_alloc(qc_engine *qc, qc_context **context)
 {
     struct qc_context **_context = context;
-    size_t size = qc_context_size(uc);
+    size_t size = qc_context_size(qc);
 
-    QC_INIT(uc);
+    QC_INIT(qc);
 
     *_context = g_malloc(size);
     if (*_context) {
-        (*_context)->jmp_env_size = sizeof(*uc->cpu->jmp_env);
-        (*_context)->context_size = uc->cpu_context_size;
-        (*_context)->arch = uc->arch;
-        (*_context)->mode = uc->mode;
-        (*_context)->uc = uc;
-        if (list_insert(&uc->saved_contexts, *_context)) {
+        (*_context)->jmp_env_size = sizeof(*qc->cpu->jmp_env);
+        (*_context)->context_size = qc->cpu_context_size;
+        (*_context)->arch = qc->arch;
+        (*_context)->mode = qc->mode;
+        (*_context)->qc = qc;
+        if (list_insert(&qc->saved_contexts, *_context)) {
             return QC_ERR_OK;
         } else {
             return QC_ERR_NOMEM;
@@ -1703,21 +1703,21 @@ qc_err qc_free(void *mem)
 }
 
 QNICORN_EXPORT
-size_t qc_context_size(qc_engine *uc)
+size_t qc_context_size(qc_engine *qc)
 {
-    QC_INIT(uc);
+    QC_INIT(qc);
     // return the total size of struct qc_context
-    return sizeof(qc_context) + uc->cpu_context_size +
-           sizeof(*uc->cpu->jmp_env);
+    return sizeof(qc_context) + qc->cpu_context_size +
+           sizeof(*qc->cpu->jmp_env);
 }
 
 QNICORN_EXPORT
-qc_err qc_context_save(qc_engine *uc, qc_context *context)
+qc_err qc_context_save(qc_engine *qc, qc_context *context)
 {
-    QC_INIT(uc);
+    QC_INIT(qc);
 
-    memcpy(context->data, uc->cpu->env_ptr, context->context_size);
-    memcpy(context->data + context->context_size, uc->cpu->jmp_env,
+    memcpy(context->data, qc->cpu->env_ptr, context->context_size);
+    memcpy(context->data + context->context_size, qc->cpu->jmp_env,
            context->jmp_env_size);
 
     return QC_ERR_OK;
@@ -1885,13 +1885,13 @@ qc_err qc_context_reg_read_batch(qc_context *ctx, int *ids, void **vals,
 }
 
 QNICORN_EXPORT
-qc_err qc_context_restore(qc_engine *uc, qc_context *context)
+qc_err qc_context_restore(qc_engine *qc, qc_context *context)
 {
-    QC_INIT(uc);
+    QC_INIT(qc);
 
-    memcpy(uc->cpu->env_ptr, context->data, context->context_size);
-    if (list_exists(&uc->saved_contexts, context)) {
-        memcpy(uc->cpu->jmp_env, context->data + context->context_size,
+    memcpy(qc->cpu->env_ptr, context->data, context->context_size);
+    if (list_exists(&qc->saved_contexts, context)) {
+        memcpy(qc->cpu->jmp_env, context->data + context->context_size,
                context->jmp_env_size);
     }
 
@@ -1901,10 +1901,10 @@ qc_err qc_context_restore(qc_engine *uc, qc_context *context)
 QNICORN_EXPORT
 qc_err qc_context_free(qc_context *context)
 {
-    qc_engine *uc = context->uc;
-    // if uc is NULL, it means that qc_engine has been free-ed.
-    if (uc) {
-        list_remove(&uc->saved_contexts, context);
+    qc_engine *qc = context->qc;
+    // if qc is NULL, it means that qc_engine has been free-ed.
+    if (qc) {
+        list_remove(&qc->saved_contexts, context);
     }
     return qc_free(context);
 }
@@ -1925,7 +1925,7 @@ static inline gboolean qc_read_exit_iter(gpointer key, gpointer val,
 }
 
 QNICORN_EXPORT
-qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
+qc_err qc_ctl(qc_engine *qc, qc_control_type control, ...)
 {
     int rw, type;
     qc_err err = QC_ERR_OK;
@@ -1940,7 +1940,7 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
     case QC_CTL_QC_MODE: {
         if (rw == QC_CTL_IO_READ) {
             int *pmode = va_arg(args, int *);
-            *pmode = uc->mode;
+            *pmode = qc->mode;
         } else {
             err = QC_ERR_ARG;
         }
@@ -1950,7 +1950,7 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
     case QC_CTL_QC_ARCH: {
         if (rw == QC_CTL_IO_READ) {
             int *arch = va_arg(args, int *);
-            *arch = uc->arch;
+            *arch = qc->arch;
         } else {
             err = QC_ERR_ARG;
         }
@@ -1960,7 +1960,7 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
     case QC_CTL_QC_TIMEOUT: {
         if (rw == QC_CTL_IO_READ) {
             uint64_t *arch = va_arg(args, uint64_t *);
-            *arch = uc->timeout;
+            *arch = qc->timeout;
         } else {
             err = QC_ERR_ARG;
         }
@@ -1970,20 +1970,20 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
     case QC_CTL_QC_PAGE_SIZE: {
         if (rw == QC_CTL_IO_READ) {
 
-            QC_INIT(uc);
+            QC_INIT(qc);
 
             uint32_t *page_size = va_arg(args, uint32_t *);
-            *page_size = uc->target_page_size;
+            *page_size = qc->target_page_size;
         } else {
             uint32_t page_size = va_arg(args, uint32_t);
             int bits = 0;
 
-            if (uc->init_done) {
+            if (qc->init_done) {
                 err = QC_ERR_ARG;
                 break;
             }
 
-            if (uc->arch != QC_ARCH_ARM) {
+            if (qc->arch != QC_ARCH_ARM) {
                 err = QC_ERR_ARG;
                 break;
             }
@@ -1998,7 +1998,7 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
                 page_size >>= 1;
             }
 
-            uc->target_bits = bits;
+            qc->target_bits = bits;
 
             err = QC_ERR_OK;
         }
@@ -2008,7 +2008,7 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
     case QC_CTL_QC_USE_EXITS: {
         if (rw == QC_CTL_IO_WRITE) {
             int use_exits = va_arg(args, int);
-            uc->use_exits = use_exits;
+            qc->use_exits = use_exits;
         } else {
             err = QC_ERR_ARG;
         }
@@ -2017,13 +2017,13 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
 
     case QC_CTL_QC_EXITS_CNT: {
 
-        QC_INIT(uc);
+        QC_INIT(qc);
 
-        if (!uc->use_exits) {
+        if (!qc->use_exits) {
             err = QC_ERR_ARG;
         } else if (rw == QC_CTL_IO_READ) {
             size_t *exits_cnt = va_arg(args, size_t *);
-            *exits_cnt = g_tree_nnodes(uc->exits);
+            *exits_cnt = g_tree_nnodes(qc->exits);
         } else {
             err = QC_ERR_ARG;
         }
@@ -2032,30 +2032,30 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
 
     case QC_CTL_QC_EXITS: {
 
-        QC_INIT(uc);
+        QC_INIT(qc);
 
-        if (!uc->use_exits) {
+        if (!qc->use_exits) {
             err = QC_ERR_ARG;
         } else if (rw == QC_CTL_IO_READ) {
             uint64_t *exits = va_arg(args, uint64_t *);
             size_t cnt = va_arg(args, size_t);
-            if (cnt < g_tree_nnodes(uc->exits)) {
+            if (cnt < g_tree_nnodes(qc->exits)) {
                 err = QC_ERR_ARG;
             } else {
                 qc_ctl_exit_request req;
                 req.array = exits;
                 req.len = 0;
 
-                g_tree_foreach(uc->exits, qc_read_exit_iter, (void *)&req);
+                g_tree_foreach(qc->exits, qc_read_exit_iter, (void *)&req);
             }
         } else if (rw == QC_CTL_IO_WRITE) {
             uint64_t *exits = va_arg(args, uint64_t *);
             size_t cnt = va_arg(args, size_t);
 
-            g_tree_remove_all(uc->exits);
+            g_tree_remove_all(qc->exits);
 
             for (size_t i = 0; i < cnt; i++) {
-                qc_add_exit(uc, exits[i]);
+                qc_add_exit(qc, exits[i]);
             }
         } else {
             err = QC_ERR_ARG;
@@ -2066,19 +2066,19 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
     case QC_CTL_CPU_MODEL: {
         if (rw == QC_CTL_IO_READ) {
 
-            QC_INIT(uc);
+            QC_INIT(qc);
 
             int *model = va_arg(args, int *);
-            *model = uc->cpu_model;
+            *model = qc->cpu_model;
         } else {
             int model = va_arg(args, int);
 
-            if (uc->init_done) {
+            if (qc->init_done) {
                 err = QC_ERR_ARG;
                 break;
             }
 
-            uc->cpu_model = model;
+            qc->cpu_model = model;
 
             err = QC_ERR_OK;
         }
@@ -2087,12 +2087,12 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
 
     case QC_CTL_TB_REQUEST_CACHE: {
 
-        QC_INIT(uc);
+        QC_INIT(qc);
 
         if (rw == QC_CTL_IO_READ_WRITE) {
             uint64_t addr = va_arg(args, uint64_t);
             qc_tb *tb = va_arg(args, qc_tb *);
-            err = uc->qc_gen_tb(uc, addr, tb);
+            err = qc->qc_gen_tb(qc, addr, tb);
         } else {
             err = QC_ERR_ARG;
         }
@@ -2101,11 +2101,11 @@ qc_err qc_ctl(qc_engine *uc, qc_control_type control, ...)
 
     case QC_CTL_TB_REMOVE_CACHE: {
 
-        QC_INIT(uc);
+        QC_INIT(qc);
 
         if (rw == QC_CTL_IO_WRITE) {
             uint64_t addr = va_arg(args, uint64_t);
-            uc->qc_invalidate_tb(uc, addr, 1);
+            qc->qc_invalidate_tb(qc, addr, 1);
         } else {
             err = QC_ERR_ARG;
         }
