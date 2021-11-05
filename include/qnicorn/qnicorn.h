@@ -68,7 +68,7 @@ typedef size_t qc_hook;
 #endif
 
 // Unicorn API version
-#define QC_API_MAJOR 2
+#define QC_API_MAJOR 1
 #define QC_API_MINOR 0
 
 // Unicorn package version

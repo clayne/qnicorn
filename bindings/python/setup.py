@@ -23,8 +23,8 @@ IS_64BITS = platform.architecture()[0] == '64bit'
 
 # are we building from the repository or from a source distribution?
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
-LIBS_DIR = os.path.join(ROOT_DIR, 'unicorn', 'lib')
-HEADERS_DIR = os.path.join(ROOT_DIR, 'unicorn', 'include')
+LIBS_DIR = os.path.join(ROOT_DIR, 'qnicorn', 'lib')
+HEADERS_DIR = os.path.join(ROOT_DIR, 'qnicorn', 'include')
 SRC_DIR = os.path.join(ROOT_DIR, 'src')
 UC_DIR = os.path.join(ROOT_DIR, '../..')
 BUILD_DIR = os.path.join(UC_DIR, 'build')
@@ -32,13 +32,13 @@ BUILD_DIR = os.path.join(UC_DIR, 'build')
 VERSION = "1.0.0"
 
 if SYSTEM == 'darwin':
-    LIBRARY_FILE = "libunicorn.dylib"
+    LIBRARY_FILE = "libqnicorn.dylib"
     STATIC_LIBRARY_FILE = None
 elif SYSTEM in ('win32', 'cygwin'):
-    LIBRARY_FILE = "unicorn.dll"
-    STATIC_LIBRARY_FILE = "unicorn.lib"
+    LIBRARY_FILE = "qnicorn.dll"
+    STATIC_LIBRARY_FILE = "qnicorn.lib"
 else:
-    LIBRARY_FILE = "libunicorn.so"
+    LIBRARY_FILE = "libqnicorn.so"
     STATIC_LIBRARY_FILE = None
 
 def clean_bins():
@@ -82,7 +82,7 @@ def copy_sources():
 
 def build_libraries():
     """
-    Prepare the unicorn directory for a binary distribution or installation.
+    Prepare the qnicorn directory for a binary distribution or installation.
     Builds shared libraries and copies header files.
 
     Will use a src/ dir if one exists in the current directory, otherwise assumes it's in the repo
@@ -93,7 +93,7 @@ def build_libraries():
     os.mkdir(LIBS_DIR)
 
     # copy public headers
-    shutil.copytree(os.path.join(UC_DIR, 'include', 'unicorn'), os.path.join(HEADERS_DIR, 'unicorn'))
+    shutil.copytree(os.path.join(UC_DIR, 'include', 'qnicorn'), os.path.join(HEADERS_DIR, 'qnicorn'))
 
     # check if a prebuilt library exists
     # if so, use it instead of building
@@ -120,7 +120,7 @@ def build_libraries():
             os.mkdir(BUILD_DIR)
         
         subprocess.check_call(['cmake', '-B', BUILD_DIR, '-G', "Visual Studio 16 2019", "-A", plat, "-DCMAKE_BUILD_TYPE=" + conf])
-        subprocess.check_call(['msbuild', 'unicorn.sln', '-m', '-p:Platform=' + plat, '-p:Configuration=' + conf], cwd=BUILD_DIR)
+        subprocess.check_call(['msbuild', 'qnicorn.sln', '-m', '-p:Platform=' + plat, '-p:Configuration=' + conf], cwd=BUILD_DIR)
 
         obj_dir = os.path.join(BUILD_DIR, conf)
         shutil.copy(os.path.join(obj_dir, LIBRARY_FILE), LIBS_DIR)
@@ -212,19 +212,13 @@ def join_all(src, files):
     return tuple(os.path.join(src, f) for f in files)
 
 long_desc = '''
-Unicorn is a lightweight, multi-platform, multi-architecture CPU emulator framework
-based on [QEMU](http://qemu.org).
+Qnicorn is a cutting edge and community-driven version of unicorn-engine.
 
-Unicorn offers some unparalleled features:
+Qnicorn offers the features below:
 
-- Multi-architecture: ARM, ARM64 (ARMv8), M68K, MIPS, PowerPC, SPARC and X86 (16, 32, 64-bit)
-- Clean/simple/lightweight/intuitive architecture-neutral API
-- Implemented in pure C language, with bindings for Crystal, Clojure, Visual Basic, Perl, Rust, Ruby, Python, Java, .NET, Go, Delphi/Free Pascal, Haskell, Pharo, and Lua.
-- Native support for Windows & *nix (with Mac OSX, Linux, *BSD & Solaris confirmed)
-- High performance via Just-In-Time compilation
-- Support for fine-grained instrumentation at various levels
-- Thread-safety by design
-- Distributed under free software license GPLv2
+- All features that Unicorn2 has.
+- Full M1 Support.
+- Fast-ring development and maintaince.
 
 Further information is available at http://www.qnicorn.org
 '''
@@ -251,6 +245,6 @@ setup(
     include_package_data=True,
     is_pure=False,
     package_data={
-        'unicorn': ['lib/*', 'include/unicorn/*']
+        'qnicorn': ['lib/*', 'include/qnicorn/*']
     }
 )

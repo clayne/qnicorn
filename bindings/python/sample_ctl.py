@@ -1,9 +1,8 @@
 # Unicorn Emulator Engine
 # By Lazymio(@wtdcode), 2021
 
-from unicorn import *
-from unicorn.unicorn import UC_HOOK_EDGE_GEN_CB
-from unicorn.x86_const import *
+from qnicorn import *
+from qnicorn.uc_const import *
 from datetime import datetime
 
 def test_uc_ctl_read():

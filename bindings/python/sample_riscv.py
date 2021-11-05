@@ -3,8 +3,8 @@
 #
 
 from __future__ import print_function
-from unicorn import *
-from unicorn.riscv_const import *
+from qnicorn import *
+from qnicorn.uc_const import *
 
 
 '''

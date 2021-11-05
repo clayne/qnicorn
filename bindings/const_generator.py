@@ -4,16 +4,16 @@
 from __future__ import print_function
 import sys, re, os
 
-INCL_DIR = os.path.join('..', 'include', 'unicorn')
+INCL_DIR = os.path.join('..', 'include', 'qnicorn')
 
-include = [ 'arm.h', 'arm64.h', 'mips.h', 'x86.h', 'sparc.h', 'm68k.h', 'ppc.h', 'riscv.h', 'unicorn.h' ]
+include = [ 'arm.h', 'arm64.h', 'mips.h', 'x86.h', 'sparc.h', 'm68k.h', 'ppc.h', 'riscv.h', 'qnicorn.h' ]
 
 template = {
     'python': {
             'header': "# For Qnicorn Engine. AUTO-GENERATED FILE, DO NOT EDIT [%s_const.py]\n",
             'footer': "",
-            'line_format': 'UC_%s = %s\n',
-            'out_file': './python/unicorn/%s_const.py',
+            'line_format': 'QC_%s = %s\n',
+            'out_file': './python/qnicorn/%s_const.py',
             # prefixes for constant filenames of all archs - case sensitive
             'arm.h': 'arm',
             'arm64.h': 'arm64',
@@ -23,14 +23,14 @@ template = {
             'm68k.h': 'm68k',
             'ppc.h': 'ppc',
             'riscv.h': 'riscv',
-            'unicorn.h': 'unicorn',
+            'qnicorn.h': 'qnicorn',
             'comment_open': '#',
             'comment_close': '',
         },
     'ruby': {
             'header': "# For Qnicorn Engine. AUTO-GENERATED FILE, DO NOT EDIT [%s_const.rb]\n\nmodule UnicornEngine\n",
             'footer': "end",
-            'line_format': '\tUC_%s = %s\n',
+            'line_format': '\tQC_%s = %s\n',
             'out_file': './ruby/unicorn_gem/lib/unicorn_engine/%s_const.rb',
             # prefixes for constant filenames of all archs - case sensitive
             'arm.h': 'arm',
@@ -41,7 +41,7 @@ template = {
             'm68k.h': 'm68k',
             'ppc.h': 'ppc',
             'riscv.h': 'riscv',
-            'unicorn.h': 'unicorn',
+            'qnicorn.h': 'qnicorn',
             'comment_open': '#',
             'comment_close': '',
         },
@@ -59,14 +59,14 @@ template = {
             'm68k.h': 'm68k',
             'ppc.h': 'ppc',
             'riscv.h': 'riscv',
-            'unicorn.h': 'unicorn',
+            'qnicorn.h': 'qnicorn',
             'comment_open': '//',
             'comment_close': '',
         },
     'java': {
             'header': "// For Qnicorn Engine. AUTO-GENERATED FILE, DO NOT EDIT\n\npackage unicorn;\n\npublic interface %sConst {\n",
             'footer': "\n}\n",
-            'line_format': '   public static final int UC_%s = %s;\n',
+            'line_format': '   public static final int QC_%s = %s;\n',
             'out_file': './java/unicorn/%sConst.java',
             # prefixes for constant filenames of all archs - case sensitive
             'arm.h': 'Arm',
@@ -77,14 +77,14 @@ template = {
             'm68k.h': 'M68k',
             'ppc.h': 'Ppc',
             'riscv.h': 'Riscv',
-            'unicorn.h': 'Unicorn',
+            'qnicorn.h': 'qnicorn',
             'comment_open': '//',
             'comment_close': '',
         },
     'dotnet': {
             'header': "// For Qnicorn Engine. AUTO-GENERATED FILE, DO NOT EDIT\n\nnamespace UnicornManaged.Const\n\nopen System\n\n[<AutoOpen>]\nmodule %s =\n",
             'footer': "\n",
-            'line_format': '    let UC_%s = %s\n',
+            'line_format': '    let QC_%s = %s\n',
             'out_file': os.path.join('dotnet', 'UnicornManaged', 'Const', '%s.fs'),
             # prefixes for constant filenames of all archs - case sensitive
             'arm.h': 'Arm',
@@ -95,14 +95,14 @@ template = {
             'm68k.h': 'M68k',
             'ppc.h': 'Ppc',
             'riscv.h': 'Riscv',
-            'unicorn.h': 'Common',
+            'qnicorn.h': 'Common',
             'comment_open': '    //',
             'comment_close': '',
         },
     'pascal': {
             'header': "// For Qnicorn Engine. AUTO-GENERATED FILE, DO NOT EDIT\n\nunit %sConst;\n\ninterface\n\nconst",
             'footer': "\nimplementation\nend.",
-            'line_format': '  UC_%s = %s;\n',
+            'line_format': '  QC_%s = %s;\n',
             'out_file': os.path.join('pascal', 'unicorn', '%sConst.pas'),
             # prefixes for constant filenames of all archs - case sensitive
             'arm.h': 'Arm',
@@ -113,7 +113,7 @@ template = {
             'm68k.h': 'M68k',
             'ppc.h': 'Ppc',
             'riscv.h': 'Riscv',
-            'unicorn.h': 'Unicorn',
+            'qnicorn.h': 'Qnicorn',
             'comment_open': '//',
             'comment_close': '',
         },
@@ -129,7 +129,7 @@ def gen(lang):
         prefix = templ[target]
         outfile = open(templ['out_file'] %(prefix), 'wb')   # open as binary prevents windows newlines
         outfile.write((templ['header'] % (prefix)).encode("utf-8"))
-        if target == 'unicorn.h':
+        if target == 'qnicorn.h':
             prefix = ''
         with open(os.path.join(INCL_DIR, target)) as f:
             lines = f.readlines()
@@ -138,7 +138,7 @@ def gen(lang):
         count = 0
         skip = 0
         in_comment = False
-        
+
         for lno, line in enumerate(lines):
             if "/*" in line:
                 in_comment = True
@@ -161,7 +161,7 @@ def gen(lang):
                 continue
 
             tmp = line.strip().split(',')
-            if len(tmp) >= 2 and tmp[0] != "#define" and not tmp[0].startswith("UC_"):
+            if len(tmp) >= 2 and tmp[0] != "#define" and not tmp[0].startswith("QC_"):
                 continue
             for t in tmp:
                 t = t.strip()
@@ -174,7 +174,7 @@ def gen(lang):
                     define = True
                     f.pop(0)
                     f.insert(1, '=')
-                if f[0].startswith("UC_" + prefix.upper()) or f[0].startswith("UC_CPU"):
+                if f[0].startswith("QC_" + prefix.upper()) or f[0].startswith("QC_CPU"):
                     if len(f) > 1 and f[1] not in ('//', '='):
                         print("WARNING: Unable to convert %s" % f)
                         print("  Line =", line)
@@ -235,7 +235,7 @@ def gen(lang):
                             rhs = re.sub(r'\b%s\b' % k, v, rhs)
                         rhs = str(eval(rhs))
 
-                    lhs_strip = re.sub(r'^UC_', '', lhs)
+                    lhs_strip = re.sub(r'^QC_', '', lhs)
                     count = int(rhs) + 1
                     if (count == 1):
                         outfile.write(("\n").encode("utf-8"))

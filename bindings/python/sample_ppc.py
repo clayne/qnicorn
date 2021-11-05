@@ -3,8 +3,8 @@
 #
 
 from __future__ import print_function
-from unicorn import *
-from unicorn.ppc_const import *
+from qnicorn import *
+from qnicorn.uc_const import *
 
 
 # code to be emulated

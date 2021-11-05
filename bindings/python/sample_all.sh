@@ -1,15 +1,15 @@
 #!/bin/sh
 
-./sample_x86.py
+python3 ./sample_x86.py
 echo "=========================="
-./shellcode.py
+python3 ./shellcode.py
 echo "=========================="
-./sample_arm.py
+python3 ./sample_arm.py
 echo "=========================="
-./sample_arm64.py
+python3 ./sample_arm64.py
 echo "=========================="
-./sample_mips.py
+python3 ./sample_mips.py
 echo "=========================="
-./sample_sparc.py
+python3 ./sample_sparc.py
 echo "=========================="
-./sample_m68k.py
+python3 ./sample_m68k.py

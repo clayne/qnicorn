@@ -3,8 +3,8 @@
 # Python sample ported by Loi Anh Tuan <loianhtuan@gmail.com>
 
 from __future__ import print_function
-from unicorn import *
-from unicorn.mips_const import *
+from qnicorn import *
+from qnicorn.uc_const import *
 
 
 # code to be emulated

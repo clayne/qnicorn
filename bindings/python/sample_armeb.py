@@ -2,8 +2,8 @@
 # Sample code for ARM big endian of Unicorn. zhangwm <rustydaar@gmail.com>
 
 from __future__ import print_function
-from unicorn import *
-from unicorn.arm_const import *
+from qnicorn import *
+from qnicorn.uc_const import *
 
 
 # code to be emulated
