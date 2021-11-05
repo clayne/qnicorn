@@ -15,7 +15,6 @@ Qnicorn offers the features below:
 
 - All features that Unicorn2 has.
 - Drop-in replacement for Unicorn but offers more features.
-- Full M1 Support.
 - Fast-ring development and maintaince.
 
 Further information is available at http://www.qnicorn.org
