@@ -73,11 +73,17 @@ pub struct Qnicorn {
     inner: Pin<Box<QnicornInner>>,
 }
 
+/// Compatible with Unicorn.
+pub type Unicorn = Qnicorn;
+
 #[derive(Debug)]
 /// Handle used to safely access exposed functions and data of a Unicorn instance.
 pub struct QnicornHandle<'a> {
     inner: Pin<&'a mut QnicornInner>,
 }
+
+/// Compatible with Unicorn.
+pub type UnicornHandle<'a> = QnicornHandle<'a>;
 
 /// Internal Management struct
 pub struct QnicornInner {
@@ -92,6 +98,9 @@ pub struct QnicornInner {
     pub insn_sys_hooks: HashMap<*mut libc::c_void, Box<ffi::InstructionSysHook>>,
     _pin: PhantomPinned,
 }
+
+/// Compatible with Unicorn.
+pub type UnicornInner = QnicornInner;
 
 impl Qnicorn {
     /// Create a new instance of the qnicorn engine for the specified architecture
