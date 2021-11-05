@@ -29,7 +29,7 @@ SRC_DIR = os.path.join(ROOT_DIR, 'src')
 UC_DIR = os.path.join(ROOT_DIR, '../..')
 BUILD_DIR = os.path.join(UC_DIR, 'build')
 
-VERSION = "1.0.0"
+VERSION = "1.0.0post1"
 
 if SYSTEM == 'darwin':
     LIBRARY_FILE = "libqnicorn.dylib"
