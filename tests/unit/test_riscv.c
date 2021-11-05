@@ -241,7 +241,7 @@ static void test_riscv32_fp_move(void)
     TEST_CHECK(r_f1 == 0x1234);
     TEST_CHECK(r_f3 == 0x1234);
 
-    uc_close(uc);
+    OK(uc_close(uc));
 }
 
 static void test_riscv64_fp_move(void)
@@ -268,7 +268,7 @@ static void test_riscv64_fp_move(void)
     TEST_CHECK(r_f1 == 0x12341234);
     TEST_CHECK(r_f3 == 0x12341234);
 
-    uc_close(uc);
+    OK(uc_close(uc));
 }
 
 static void test_riscv64_fp_move_from_int(void)
@@ -303,7 +303,38 @@ static void test_riscv64_fp_move_from_int(void)
     TEST_CHECK(r_ft0 == 0x56785678);
     TEST_CHECK(r_s6 == 0x56785678);
 
-    uc_close(uc);
+    OK(uc_close(uc));
+}
+
+static void test_riscv64_fp_move_from_int_reg_write(void)
+{
+    uc_engine *uc;
+    char code[] = "\x53\x00\x0b\xf2"; // fmvd.d.x ft0, s6
+
+    uint64_t r_ft0 = 0x12341234;
+    uint64_t r_s6 = 0x56785678;
+    uint64_t r_mstatus = 0x6000;
+
+    uc_common_setup(&uc, QC_ARCH_RISCV, QC_MODE_RISCV64, code,
+                    sizeof(code) - 1);
+
+    // initialize machine registers
+    OK(qc_reg_write(uc, QC_RISCV_REG_FT0, &r_ft0));
+    OK(qc_reg_write(uc, QC_RISCV_REG_S6, &r_s6));
+
+    // mstatus.fs
+    OK(qc_reg_write(uc, QC_RISCV_REG_MSTATUS, &r_mstatus));
+
+    // emulate the instruction
+    OK(qc_emu_start(uc, code_start, -1, 0, 1));
+
+    OK(qc_reg_read(uc, QC_RISCV_REG_FT0, &r_ft0));
+    OK(qc_reg_read(uc, QC_RISCV_REG_S6, &r_s6));
+
+    TEST_CHECK(r_ft0 == 0x56785678);
+    TEST_CHECK(r_s6 == 0x56785678);
+
+    OK(uc_close(uc));
 }
 
 static void test_riscv64_fp_move_to_int(void)
@@ -338,7 +369,7 @@ static void test_riscv64_fp_move_to_int(void)
     TEST_CHECK(r_ft0 == 0x12341234);
     TEST_CHECK(r_s6 == 0x12341234);
 
-    uc_close(uc);
+    OK(uc_close(uc));
 }
 
 static void test_riscv64_ecall_cb(uc_engine *uc, uint32_t intno, void *data)
@@ -376,6 +407,8 @@ TEST_LIST = {{"test_riscv32_nop", test_riscv32_nop},
              {"test_riscv32_fp_move", test_riscv32_fp_move},
              {"test_riscv64_fp_move", test_riscv64_fp_move},
              {"test_riscv64_fp_move_from_int", test_riscv64_fp_move_from_int},
+             {"test_riscv64_fp_move_from_int_reg_write",
+              test_riscv64_fp_move_from_int_reg_write},
              {"test_riscv64_fp_move_to_int", test_riscv64_fp_move_to_int},
              {"test_riscv64_ecall", test_riscv64_ecall},
              {NULL, NULL}};
