@@ -14,6 +14,7 @@ Qnicorn is a cutting edge and community-driven version of unicorn-engine.
 Qnicorn offers the features below:
 
 - All features that Unicorn2 has.
+- Drop-in replacement for Unicorn but offers more features.
 - Full M1 Support.
 - Fast-ring development and maintaince.
 
@@ -25,7 +26,9 @@ License
 
 This project is released under the [GPL license](COPYING).
 
-
+Migration from Unicorn
+------------------
+See [Migration](https://github.com/qilingframework/qnicorn/wiki/Migration-from-Unicorn) for how to migrate your code to Qnicorn.
 Compilation & Docs
 ------------------
 
