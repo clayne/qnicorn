@@ -1,4 +1,4 @@
-Unicorn Engine
+Qnicorn Engine
 ==============
 
 [![pypi downloads](https://pepy.tech/badge/unicorn)](https://pepy.tech/project/unicorn)
