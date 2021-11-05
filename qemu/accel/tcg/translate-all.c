@@ -985,7 +985,8 @@ static void qc_invalidate_tb(struct qc_struct *uc, uint64_t start_addr, size_t l
 {
     tb_page_addr_t start, end;
 
-    // GVA to GPA (GPA -> HVA via page_find, HVA->HPA via host mmu)
+    // GVA to GPA (GPA -> HVA via address space/flat view, HVA->HPA via host mmu)
+    // PageDesc* here is used for getting a TB from a GPA address.
     start = get_page_addr_code(uc->cpu->env_ptr, start_addr) & (target_ulong)(-1);
     
     // For 32bit target.
