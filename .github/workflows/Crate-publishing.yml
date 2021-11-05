@@ -68,6 +68,8 @@ jobs:
         choco install ninja cmake
 
     - name: '🚧 Cargo test'
+      env:
+        QNICORN_VERSION: dev
       run: |
          cd bindings/rust && cargo test
 
