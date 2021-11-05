@@ -6,7 +6,7 @@ Qnicorn Engine
 
 
 <p align="center">
-<img width="350" src="docs/qnicorn.png">
+<img width="350" src="docs/qnicorn-black.png">
 </p>
 
 Qnicorn is a cutting edge and community-driven version of unicorn-engine.
