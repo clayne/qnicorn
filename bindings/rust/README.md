@@ -32,7 +32,7 @@ Add this to your `Cargo.toml`:
 
 ```
 [dependencies]
-qnicorn-engine = "1.0.0"
+qnicorn = "1.0.0"
 ```
 
 ## Acknowledgements
