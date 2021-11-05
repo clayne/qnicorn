@@ -217,7 +217,7 @@ Qnicorn is a cutting edge and community-driven version of unicorn-engine.
 Qnicorn offers the features below:
 
 - All features that Unicorn2 has.
-- Full M1 Support.
+- Drop-in replacement for Unicorn but offers more features.
 - Fast-ring development and maintaince.
 
 Further information is available at http://www.qnicorn.org
